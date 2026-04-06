@@ -567,7 +567,7 @@
         <div style="border-radius:12px;border:1px solid var(--border);overflow:hidden;">
           <table class="dashboard-table">
             <thead>
-              <tr><th>Guest</th><th>Number</th><th>Invite</th><th>RSVP</th><th>Attending</th><th>Guests</th></tr>
+              <tr><th>Guest</th><th>Number</th><th>Invite</th><th>RSVP</th><th>Attending</th><th>Dietary</th></tr>
             </thead>
             <tbody id="dashboardBody"></tbody>
           </table>
@@ -1147,8 +1147,18 @@
         (data.rsvps || []).forEach(r => {
           rsvpMap[r.guest_name.toLowerCase()] = r;
         });
+        const validGuests = state.guests.filter(g => g.valid);
+        const sentCount = validGuests.filter(g => g.sendStatus === 'sent').length;
+        const failedCount = validGuests.filter(g => g.sendStatus === 'failed').length;
+        document.getElementById('dSent').textContent = sentCount || state.sentCount || validGuests.length;
+        document.getElementById('dFailed').textContent = failedCount || state.failedCount || 0;
         document.getElementById('dRsvp').textContent = data.total || 0;
         document.getElementById('dAttending').textContent = data.attending || 0;
+        // Mark guests who have responded so reminder blast skips them
+        (data.rsvps || []).forEach(r => {
+          const g = validGuests.find(g => g.name.toLowerCase() === r.guest_name.toLowerCase());
+          if (g) g.rsvpReceived = true;
+        });
         renderDashboardTable(rsvpMap);
       } catch(e) {}
     }
