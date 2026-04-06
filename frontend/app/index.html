@@ -346,7 +346,7 @@
           </div>
         </div>
         <div class="step-nav">
-          <button class="btn-next" onclick="goStep(2)">Next: Choose Design →</button>
+          <button class="btn-next" onclick="validateStep1()">Next: Choose Design →</button>
         </div>
       </div>
 
@@ -397,7 +397,7 @@
         </div>
         <div class="step-nav">
           <button class="btn-back" onclick="goStep(1)">← Back</button>
-          <button class="btn-next" onclick="goStep(3)">Next: Write Your Message →</button>
+          <button class="btn-next" onclick="validateStep2()">Next: Write Your Message →</button>
         </div>
       </div>
 
@@ -437,7 +437,7 @@
         </div>
         <div class="step-nav">
           <button class="btn-back" onclick="goStep(2)">← Back</button>
-          <button class="btn-next" onclick="goStep(4)">Next: Upload Guests →</button>
+          <button class="btn-next" onclick="validateStep3()">Next: Upload Guests →</button>
         </div>
       </div>
 
@@ -471,7 +471,7 @@
         </div>
         <div class="step-nav">
           <button class="btn-back" onclick="goStep(3)">← Back</button>
-          <button class="btn-next" onclick="goStep(5)">Next: Review & Send →</button>
+          <button class="btn-next" onclick="validateStep4()">Next: Review & Send →</button>
         </div>
       </div>
 
@@ -654,6 +654,63 @@
       fun:       "Hey [Name]! 🎉 {HOST} are throwing a {TYPE} and you're on the list! Click below for all the details — it's going to be one to remember!\n[InviteLink]",
       corporate: "Dear [Name], on behalf of {HOST} we are pleased to formally invite you to our {TYPE}. Please click the link below to view the full details and confirm your attendance.\n[InviteLink]",
     };
+
+    // ── STEP VALIDATION ──
+    function showStepError(id, msg) {
+      let el = document.getElementById(id);
+      if (!el) {
+        el = document.createElement('div');
+        el.id = id;
+        el.style.cssText = 'color:#f87171;font-size:13px;margin-top:10px;padding:10px 14px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.3);border-radius:8px;';
+      }
+      el.textContent = '⚠️ ' + msg;
+      return el;
+    }
+
+    function validateStep1() {
+      const name = document.getElementById('eventName').value.trim();
+      const date = document.getElementById('eventDate').value.trim();
+      const venue = document.getElementById('eventVenue').value.trim();
+      const nav = document.querySelector('#step1 .step-nav');
+      let err = document.getElementById('step1Error') || showStepError('step1Error', '');
+      if (!nav.contains(err)) nav.insertBefore(err, nav.firstChild);
+      if (!name) { err.textContent = '⚠️ Please enter your event name.'; err.style.display='block'; return; }
+      if (!date) { err.textContent = '⚠️ Please enter the event date.'; err.style.display='block'; return; }
+      if (!venue) { err.textContent = '⚠️ Please enter the venue.'; err.style.display='block'; return; }
+      err.style.display = 'none';
+      goStep(2);
+    }
+
+    function validateStep2() {
+      const sender = document.getElementById('senderName').value.trim();
+      const nav = document.querySelector('#step2 .step-nav');
+      let err = document.getElementById('step2Error') || showStepError('step2Error', '');
+      if (!nav.contains(err)) nav.insertBefore(err, nav.firstChild);
+      if (!sender) { err.textContent = '⚠️ Please enter a sender name (e.g. "SarahWeds").'; err.style.display='block'; return; }
+      if (sender.length < 3) { err.textContent = '⚠️ Sender name must be at least 3 characters.'; err.style.display='block'; return; }
+      err.style.display = 'none';
+      goStep(3);
+    }
+
+    function validateStep3() {
+      const msg = document.getElementById('messageText').value.trim();
+      const nav = document.querySelector('#step3 .step-nav');
+      let err = document.getElementById('step3Error') || showStepError('step3Error', '');
+      if (!nav.contains(err)) nav.insertBefore(err, nav.firstChild);
+      if (!msg) { err.textContent = '⚠️ Please write a message for your guests.'; err.style.display='block'; return; }
+      err.style.display = 'none';
+      goStep(4);
+    }
+
+    function validateStep4() {
+      const valid = state.guests.filter(g => g.valid);
+      const nav = document.querySelector('#step4 .step-nav');
+      let err = document.getElementById('step4Error') || showStepError('step4Error', '');
+      if (!nav.contains(err)) nav.insertBefore(err, nav.firstChild);
+      if (!valid.length) { err.textContent = '⚠️ Please add at least one guest with a valid phone number.'; err.style.display='block'; return; }
+      err.style.display = 'none';
+      goStep(5);
+    }
 
     // ── NAVIGATION ──
     function goStep(n) {
@@ -1048,9 +1105,16 @@
         seen.add(g.number);
         return true;
       });
-      if (!valid.length) return;
+      if (!valid.length) {
+        alert('No valid guests to send to. Please go back to Step 4 and add guests with valid UK phone numbers.');
+        return;
+      }
 
-      const sender = document.getElementById('senderName').value || 'CarmelJames';
+      const sender = document.getElementById('senderName').value || '';
+      if (!sender) {
+        alert('Please go back to Step 2 and enter a sender name (e.g. "SarahWeds").');
+        return;
+      }
 
       // Payment gate: if not test mode, go via Stripe
       if (!state.testMode && state.eventId) {
