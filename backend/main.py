@@ -142,7 +142,8 @@ async def fire_sms_blast(guests: list, message: str, sender: str, event_id: str)
         if not number or not number.startswith("+"):
             results.append({"name": name, "success": False, "error": "Invalid number"})
             continue
-        personalised = message.replace("[Name]", name)
+        invite_url = f"{PUBLIC_URL}/invite/{event_id}?name={name}" if PUBLIC_URL else f"/invite/{event_id}?name={name}"
+        personalised = message.replace("[Name]", name).replace("[InviteLink]", invite_url)
         try:
             msg = client.messages.create(body=personalised, from_=sender, to=number)
             results.append({"name": name, "number": number, "success": True, "sid": msg.sid})
