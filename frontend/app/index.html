@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InviteForge — Create Your Invitation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <!-- SheetJS — reads Excel, CSV, ODS, Numbers exports -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <!-- JSZip — extracts Google Sheets / ZIP exports before parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold: #c9a96e; --gold-light: #e8d5a3;
+      --navy: #0a0e1a; --navy-mid: #111827; --navy-light: #1e2d45;
+      --white: #f8f6f0; --grey: #9ca3af;
+      --green: #22c55e; --red: #ef4444;
+      --border: rgba(255,255,255,0.08);
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--navy); color: var(--white); min-height: 100vh; }
+
+    /* HEADER */
+    .app-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 40px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10,14,26,0.95);
+      position: sticky; top: 0; z-index: 50;
+    }
+    .logo { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--gold); }
+    .logo span { color: var(--white); }
+
+    /* PROGRESS BAR */
+    .progress-bar {
+      display: flex; align-items: center; gap: 0;
+      flex: 1; max-width: 480px; margin: 0 40px;
+    }
+    .progress-step {
+      display: flex; align-items: center; flex: 1;
+    }
+    .step-circle {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600; color: var(--grey);
+      transition: all 0.3s; flex-shrink: 0; background: var(--navy-mid);
+    }
+    .step-circle.active { border-color: var(--gold); color: var(--gold); background: rgba(201,169,110,0.1); }
+    .step-circle.done { border-color: var(--green); background: var(--green); color: var(--navy); }
+    .step-line { flex: 1; height: 2px; background: var(--border); margin: 0 6px; transition: background 0.3s; }
+    .step-line.done { background: var(--green); }
+
+    /* MAIN LAYOUT */
+    .app-body { display: grid; grid-template-columns: 1fr 380px; min-height: calc(100vh - 73px); }
+    .app-main { padding: 48px 56px; overflow-y: auto; }
+    .app-preview {
+      background: var(--navy-mid); border-left: 1px solid var(--border);
+      padding: 32px 28px; position: sticky; top: 73px; height: calc(100vh - 73px);
+      overflow-y: auto;
+    }
+
+    /* STEP CONTENT */
+    .step-content { display: none; max-width: 600px; }
+    .step-content.active { display: block; }
+    .step-heading { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; margin-bottom: 8px; }
+    .step-sub { font-size: 16px; color: var(--grey); margin-bottom: 40px; line-height: 1.6; }
+
+    /* FORM */
+    .form-group { margin-bottom: 28px; }
+    .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--gold); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 10px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 14px 18px;
+      background: var(--navy-mid); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--white); font-family: 'Inter', sans-serif;
+      font-size: 15px; transition: border-color 0.2s;
+      outline: none;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--gold); }
+    .form-input::placeholder, .form-textarea::placeholder { color: rgba(156,163,175,0.5); }
+    .form-textarea { resize: vertical; min-height: 100px; }
+    .form-select { cursor: pointer; }
+    .form-select option { background: var(--navy-mid); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* TEMPLATE PICKER */
+    .template-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 8px; }
+    .template-option {
+      border: 2px solid var(--border); border-radius: 12px; overflow: hidden;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .template-option:hover { border-color: rgba(201,169,110,0.4); }
+    .template-option.selected { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,169,110,0.15); }
+    .template-thumb {
+      height: 100px; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; text-align: center; padding: 8px;
+    }
+    .t-luxury { background: linear-gradient(160deg, #0a0e1a, #1e2d45); color: #c9a96e; }
+    .t-garden { background: linear-gradient(160deg, #f0fdf4, #bbf7d0); color: #166534; }
+    .t-minimal { background: linear-gradient(160deg, #ffffff, #f1f5f9); color: #0f172a; }
+    .t-celebration { background: linear-gradient(160deg, #1e1b4b, #4c1d95); color: #fbbf24; }
+    .t-corporate { background: linear-gradient(160deg, #0f172a, #1e293b); color: #94a3b8; }
+    .template-name { padding: 8px; font-size: 11px; font-weight: 600; text-align: center; background: rgba(0,0,0,0.3); color: var(--white); }
+
+    /* TONE PICKER */
+    .tone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .tone-option {
+      padding: 18px 20px; border: 2px solid var(--border);
+      border-radius: 12px; cursor: pointer; transition: all 0.2s;
+    }
+    .tone-option:hover { border-color: rgba(201,169,110,0.4); }
+    .tone-option.selected { border-color: var(--gold); background: rgba(201,169,110,0.06); }
+    .tone-option h4 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .tone-option p { font-size: 12px; color: var(--grey); }
+
+    /* MESSAGE PREVIEW */
+    .message-preview {
+      background: rgba(201,169,110,0.06); border: 1px solid rgba(201,169,110,0.2);
+      border-radius: 12px; padding: 20px 24px; margin-top: 20px;
+    }
+    .message-preview-label { font-size: 11px; color: var(--gold); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; font-weight: 600; }
+    .message-preview p { font-size: 14px; line-height: 1.8; color: var(--gold-light); }
+    .message-preview .name-placeholder { color: var(--gold); font-weight: 700; }
+
+    /* GUEST UPLOAD */
+    .upload-zone {
+      border: 2px dashed rgba(201,169,110,0.3); border-radius: 16px;
+      padding: 48px 32px; text-align: center; cursor: pointer;
+      transition: all 0.2s; margin-bottom: 24px;
+    }
+    .upload-zone:hover, .upload-zone.dragging { border-color: var(--gold); background: rgba(201,169,110,0.04); }
+    .upload-icon { font-size: 40px; margin-bottom: 16px; }
+    .upload-zone h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    .upload-zone p { font-size: 14px; color: var(--grey); }
+    .upload-zone input { display: none; }
+    .upload-btn {
+      display: inline-block; margin-top: 16px;
+      background: rgba(201,169,110,0.1); border: 1px solid rgba(201,169,110,0.3);
+      color: var(--gold); padding: 10px 24px; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .upload-btn:hover { background: rgba(201,169,110,0.2); }
+
+    /* GUEST TABLE */
+    .guest-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+    .guest-table { width: 100%; border-collapse: collapse; }
+    .guest-table th { padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--grey); text-transform: uppercase; letter-spacing: 0.5px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+    .guest-table td { padding: 12px 16px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .guest-table tr:last-child td { border-bottom: none; }
+    .guest-table .status-ok { color: var(--green); font-weight: 600; }
+    .guest-table .status-warn { color: #f59e0b; font-weight: 600; }
+    .guest-count { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+    .guest-count-item { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 8px; padding: 12px 20px; }
+    .guest-count-item .num { font-size: 24px; font-weight: 700; color: var(--gold); }
+    .guest-count-item .label { font-size: 12px; color: var(--grey); }
+
+    /* SEND SUMMARY */
+    .send-summary {
+      background: var(--navy-mid); border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden; margin-bottom: 28px;
+    }
+    .send-summary-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 24px; border-bottom: 1px solid var(--border);
+    }
+    .send-summary-row:last-child { border-bottom: none; }
+    .send-summary-row .label { font-size: 14px; color: var(--grey); }
+    .send-summary-row .value { font-size: 15px; font-weight: 600; }
+    .cost-highlight { color: var(--gold); font-family: 'Playfair Display', serif; font-size: 28px; }
+
+    /* SEND BUTTON */
+    .send-btn {
+      width: 100%; padding: 20px; border-radius: 12px;
+      background: var(--gold); color: var(--navy);
+      font-size: 18px; font-weight: 700; border: none; cursor: pointer;
+      transition: all 0.2s; font-family: 'Inter', sans-serif;
+    }
+    .send-btn:hover { background: var(--gold-light); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(201,169,110,0.3); }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* SENDING ANIMATION */
+    .sending-progress { display: none; }
+    .sending-progress.active { display: block; }
+    .sending-bar-wrap { background: rgba(255,255,255,0.06); border-radius: 100px; height: 8px; overflow: hidden; margin: 16px 0; }
+    .sending-bar { height: 100%; background: linear-gradient(90deg, var(--gold), var(--green)); border-radius: 100px; width: 0%; transition: width 0.5s ease; }
+    .sending-log { max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; }
+    .log-line { font-size: 13px; font-family: monospace; padding: 3px 0; }
+    .log-line.ok { color: var(--green); }
+    .log-line.err { color: var(--red); }
+    .log-line.info { color: var(--grey); }
+
+    /* DASHBOARD */
+    .dashboard-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+    .dash-stat {
+      background: var(--navy-mid); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px 24px; text-align: center;
+    }
+    .dash-stat .num { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 700; color: var(--gold); }
+    .dash-stat .label { font-size: 12px; color: var(--grey); margin-top: 4px; }
+    .dashboard-table { width: 100%; border-collapse: collapse; }
+    .dashboard-table th { padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--grey); text-transform: uppercase; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+    .dashboard-table td { padding: 14px 16px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 600; }
+    .badge-sent { background: rgba(34,197,94,0.15); color: var(--green); }
+    .badge-pending { background: rgba(245,158,11,0.15); color: #f59e0b; }
+    .badge-failed { background: rgba(239,68,68,0.15); color: var(--red); }
+    .badge-yes { background: rgba(34,197,94,0.15); color: var(--green); }
+    .badge-no { background: rgba(239,68,68,0.15); color: var(--red); }
+    .badge-waiting { background: rgba(156,163,175,0.15); color: var(--grey); }
+
+    /* NAV BUTTONS */
+    .step-nav { display: flex; gap: 12px; margin-top: 40px; }
+    .btn-back {
+      padding: 14px 32px; border-radius: 8px;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--grey); font-size: 15px; font-weight: 600;
+      cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s;
+    }
+    .btn-back:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-next {
+      padding: 14px 40px; border-radius: 8px;
+      background: var(--gold); color: var(--navy);
+      font-size: 15px; font-weight: 700; border: none;
+      cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s;
+    }
+    .btn-next:hover { background: var(--gold-light); transform: translateY(-1px); }
+
+    /* PREVIEW PANEL */
+    .preview-label { font-size: 11px; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; font-weight: 600; margin-bottom: 16px; }
+    .preview-phone {
+      background: #1a1a1a; border-radius: 24px; padding: 16px;
+      border: 4px solid #333; max-width: 260px; margin: 0 auto 24px;
+    }
+    .preview-sms {
+      background: #2a2a2a; border-radius: 16px; padding: 16px;
+      font-size: 13px; line-height: 1.7; color: #f0f0f0;
+    }
+    .preview-sms .sender { font-size: 11px; color: #888; margin-bottom: 8px; font-weight: 600; }
+    .preview-invite {
+      border-radius: 16px; overflow: hidden;
+      border: 1px solid rgba(201,169,110,0.2); margin-top: 16px;
+    }
+    .preview-invite-header {
+      height: 80px; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: rgba(255,255,255,0.5);
+    }
+    .preview-invite-body { padding: 16px; }
+    .preview-invite-title { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--gold); margin-bottom: 6px; }
+    .preview-invite-detail { font-size: 11px; color: var(--grey); line-height: 1.6; }
+    .preview-stats { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+    .preview-stat-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; }
+    .preview-stat-row .k { font-size: 12px; color: var(--grey); }
+    .preview-stat-row .v { font-size: 13px; font-weight: 600; }
+
+    @media (max-width: 900px) {
+      .app-body { grid-template-columns: 1fr; }
+      .app-preview { display: none; }
+      .app-main { padding: 32px 24px; }
+      .dashboard-stats { grid-template-columns: 1fr 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      .template-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <a href="/" style="text-decoration:none;"><div class="logo">Invite<span>Forge</span></div></a>
+    <div class="progress-bar" id="progressBar">
+      <div class="progress-step">
+        <div class="step-circle active" id="sc1">1</div>
+        <div class="step-line" id="sl1"></div>
+      </div>
+      <div class="progress-step">
+        <div class="step-circle" id="sc2">2</div>
+        <div class="step-line" id="sl2"></div>
+      </div>
+      <div class="progress-step">
+        <div class="step-circle" id="sc3">3</div>
+        <div class="step-line" id="sl3"></div>
+      </div>
+      <div class="progress-step">
+        <div class="step-circle" id="sc4">4</div>
+        <div class="step-line" id="sl4"></div>
+      </div>
+      <div class="progress-step">
+        <div class="step-circle" id="sc5">5</div>
+        <div class="step-line" id="sl5"></div>
+      </div>
+      <div class="progress-step">
+        <div class="step-circle" id="sc6">6</div>
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--grey);">Step <span id="stepLabel">1</span> of 6</div>
+  </header>
+
+  <div class="app-body">
+    <main class="app-main">
+
+      <!-- STEP 1 — EVENT DETAILS -->
+      <div class="step-content active" id="step1">
+        <div class="step-heading">Create your event</div>
+        <div class="step-sub">Tell us the basics. This powers your invitation page and SMS messages.</div>
+        <div class="form-group">
+          <label class="form-label">What type of event is this?</label>
+          <select class="form-select" id="eventType" onchange="updatePreview()">
+            <option value="">Select event type...</option>
+            <option value="Wedding">Wedding</option>
+            <option value="Birthday Party">Birthday Party</option>
+            <option value="Anniversary">Anniversary</option>
+            <option value="Corporate Event">Corporate Event</option>
+            <option value="Baby Shower">Baby Shower</option>
+            <option value="Graduation Party">Graduation Party</option>
+            <option value="Engagement Party">Engagement Party</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Event / Host Name</label>
+          <input class="form-input" id="eventName" placeholder="e.g. Sarah & Tom's Wedding" oninput="updatePreview()"/>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input class="form-input" id="eventDate" type="date" onchange="updatePreview()"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Time (optional)</label>
+            <input class="form-input" id="eventTime" type="time" onchange="updatePreview()"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Venue</label>
+          <input class="form-input" id="eventVenue" placeholder="e.g. The Grand Hotel, Manchester" oninput="updatePreview()"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Upload Event Video or Photo (optional)</label>
+          <div class="upload-zone" id="mediaUpload">
+            <div class="upload-icon">🎬</div>
+            <h3>Drop your video or photo here</h3>
+            <p>This plays at the top of your invitation page. MP4, MOV, JPG, PNG</p>
+            <label for="mediaFile" class="upload-btn" style="cursor:pointer;">Choose File</label>
+            <input type="file" id="mediaFile" accept="video/*,image/*" style="display:none;" onchange="handleMediaUpload(this)"/>
+          </div>
+        </div>
+        <div class="step-nav">
+          <button class="btn-next" onclick="goStep(2)">Next: Choose Design →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2 — CHOOSE DESIGN -->
+      <div class="step-content" id="step2">
+        <div class="step-heading">Choose your design</div>
+        <div class="step-sub">One click applies the full look — colours, fonts, layout. All mobile-first.</div>
+        <div class="form-group">
+          <label class="form-label">Select a Template</label>
+          <div class="template-grid">
+            <div class="template-option selected" onclick="selectTemplate('luxury')" id="t-luxury">
+              <div class="template-thumb t-luxury">
+                <div style="font-family:'Playfair Display',serif;font-size:14px;">Your Event</div>
+              </div>
+              <div class="template-name">Luxury Dark ⭐</div>
+            </div>
+            <div class="template-option" onclick="selectTemplate('garden')" id="t-garden">
+              <div class="template-thumb t-garden">
+                <div style="font-family:'Playfair Display',serif;font-size:14px;">Your Event</div>
+              </div>
+              <div class="template-name">Garden Fresh</div>
+            </div>
+            <div class="template-option" onclick="selectTemplate('minimal')" id="t-minimal">
+              <div class="template-thumb t-minimal">
+                <div style="font-family:'Playfair Display',serif;font-size:14px;color:#0f172a;">Your Event</div>
+              </div>
+              <div class="template-name">Clean Minimal</div>
+            </div>
+            <div class="template-option" onclick="selectTemplate('celebration')" id="t-celebration">
+              <div class="template-thumb t-celebration">
+                <div style="font-family:'Playfair Display',serif;font-size:14px;color:#fbbf24;">🎉 Your Event</div>
+              </div>
+              <div class="template-name">Celebration</div>
+            </div>
+            <div class="template-option" onclick="selectTemplate('corporate')" id="t-corporate">
+              <div class="template-thumb t-corporate">
+                <div style="font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:#e2e8f0;">YOUR EVENT</div>
+              </div>
+              <div class="template-name">Corporate</div>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sender Name (shows on SMS — max 11 characters)</label>
+          <input class="form-input" id="senderName" placeholder="e.g. SarahAndTom" maxlength="11" oninput="updatePreview(); this.value=this.value.replace(/\s/g,''); checkSenderName()"/>
+          <div style="font-size:12px;color:var(--grey);margin-top:6px;">No spaces. Max 11 chars. This is what guests see as the sender. Example: "SarahAndTom", "Jakes21st"</div>
+          <div id="senderWarning" style="display:none;font-size:12px;color:#f59e0b;margin-top:6px;padding:8px 12px;background:rgba(245,158,11,0.08);border-radius:6px;border:1px solid rgba(245,158,11,0.2);">⚠️ Use your event name (e.g. "SarahWeds") not "InviteForge" — UK networks may reject generic sender names.</div>
+        </div>
+        <div class="step-nav">
+          <button class="btn-back" onclick="goStep(1)">← Back</button>
+          <button class="btn-next" onclick="goStep(3)">Next: Write Your Message →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3 — MESSAGE -->
+      <div class="step-content" id="step3">
+        <div class="step-heading">Your invitation message</div>
+        <div class="step-sub">Pick a tone and AI writes it. Every guest gets their name automatically.</div>
+        <div class="form-group">
+          <label class="form-label">Choose Your Tone</label>
+          <div class="tone-grid">
+            <div class="tone-option selected" onclick="selectTone('formal')" id="tone-formal">
+              <h4>Formal & Elegant</h4>
+              <p>Classic, respectful, timeless</p>
+            </div>
+            <div class="tone-option" onclick="selectTone('warm')" id="tone-warm">
+              <h4>Warm & Personal</h4>
+              <p>Heartfelt, friendly, genuine</p>
+            </div>
+            <div class="tone-option" onclick="selectTone('fun')" id="tone-fun">
+              <h4>Fun & Casual</h4>
+              <p>Upbeat, playful, relaxed</p>
+            </div>
+            <div class="tone-option" onclick="selectTone('corporate')" id="tone-corporate">
+              <h4>Corporate</h4>
+              <p>Professional, concise, clear</p>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Generated Message (edit freely)</label>
+          <textarea class="form-textarea" id="messageText" rows="6" oninput="updatePreview(); checkSmsLength()" style="min-height:140px;"></textarea>
+          <div style="font-size:12px;color:var(--grey);margin-top:8px;">Use <strong style="color:var(--gold);">[Name]</strong> for the guest's name. <strong style="color:var(--gold);">[InviteLink]</strong> becomes the real invite URL when sent.</div>
+        </div>
+        <div class="message-preview" id="messagePreview">
+          <div class="message-preview-label">Preview (as received by guest)</div>
+          <p id="messagePreviewText"></p>
+        </div>
+        <div class="step-nav">
+          <button class="btn-back" onclick="goStep(2)">← Back</button>
+          <button class="btn-next" onclick="goStep(4)">Next: Upload Guests →</button>
+        </div>
+      </div>
+
+      <!-- STEP 4 — GUESTS -->
+      <div class="step-content" id="step4">
+        <div class="step-heading">Upload your guest list</div>
+        <div class="step-sub">Any file works — spreadsheet, CSV, Excel, ZIP. Drop it in and we'll figure it out.</div>
+        <div class="upload-zone" id="csvDrop">
+          <div class="upload-icon">📋</div>
+          <h3>Drop any file here</h3>
+          <p style="margin-bottom:6px;">Works with: <strong style="color:var(--gold-light)">Excel, CSV, Numbers, Google Sheets, ZIP</strong></p>
+          <p style="font-size:12px;">We automatically find the names and numbers — no formatting needed.</p>
+          <label for="csvFile" class="upload-btn" style="cursor:pointer;">Browse Files</label>
+          <input type="file" id="csvFile" accept="*/*" style="display:none;" onchange="handleGuestUpload(this)"/>
+        </div>
+        <div id="fileStatus" style="display:none;padding:14px 18px;border-radius:10px;margin-bottom:16px;font-size:14px;font-weight:500;"></div>
+        <div style="text-align:center;color:var(--grey);font-size:14px;margin:-8px 0 20px;">— or type / paste names and numbers below —</div>
+        <div class="form-group">
+          <label class="form-label">Paste or Type Guest Data</label>
+          <textarea class="form-textarea" id="guestPaste" rows="6" placeholder="Type or paste here — one guest per line:&#10;&#10;Emma Johnson, 07712 345 ***&#10;David Williams, 07823 456 ***&#10;Sophie Taylor, 07934 567 ***&#10;&#10;Just name and number, separated by a comma. That's it." oninput="parseGuestPaste()"></textarea>
+          <div style="font-size:12px;color:var(--grey);margin-top:8px;">📌 One guest per line. Name, then number. Comma between them. UK numbers with or without 07/+44 — all work.</div>
+        </div>
+        <div id="guestResults" style="display:none;">
+          <div class="guest-count" id="guestCount"></div>
+          <div class="guest-table-wrap">
+            <table class="guest-table">
+              <thead><tr><th>#</th><th>Name</th><th>Number</th><th>Status</th></tr></thead>
+              <tbody id="guestTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="step-nav">
+          <button class="btn-back" onclick="goStep(3)">← Back</button>
+          <button class="btn-next" onclick="goStep(5)">Next: Review & Send →</button>
+        </div>
+      </div>
+
+      <!-- STEP 5 — PREVIEW + SEND -->
+      <div class="step-content" id="step5">
+        <div class="step-heading">Preview & Send</div>
+        <div class="step-sub">This is exactly what your guests will see when they tap the link. Happy with it? Hit send.</div>
+
+        <!-- INVITE PREVIEW — full width iframe -->
+        <div style="margin-bottom:36px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+            Your Invitation Page
+            <span style="letter-spacing:0;text-transform:none;font-size:12px;color:var(--grey);font-weight:400;">— tap to scroll, just like a guest would</span>
+          </div>
+          <!-- Phone frame -->
+          <div id="inviteCreating" style="text-align:center;padding:48px;color:var(--grey);">
+            <div style="font-size:32px;margin-bottom:12px;">✨</div>
+            <div style="font-size:15px;">Creating your invitation...</div>
+          </div>
+          <div id="invitePreviewWrap" style="display:none;">
+            <div style="background:#1a1a2e;border-radius:32px;padding:12px;border:4px solid #2a2a3e;box-shadow:0 24px 64px rgba(0,0,0,0.6);max-width:380px;margin:0 auto;">
+              <div style="background:#000;border-radius:8px;height:6px;width:80px;margin:0 auto 10px;"></div>
+              <iframe id="inviteFrame" src="" style="width:100%;height:680px;border:none;border-radius:20px;" scrolling="yes"></iframe>
+            </div>
+            <div style="text-align:center;margin-top:20px;">
+              <a id="inviteOpenBtn" href="#" target="_blank" style="color:var(--gold);font-size:13px;font-weight:600;text-decoration:none;padding:10px 24px;border:1px solid rgba(201,169,110,0.3);border-radius:8px;">↗ Open full page in new tab</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- SMS PREVIEW -->
+        <div style="margin-bottom:32px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;">SMS Your Guests Will Receive</div>
+          <div style="background:#1a1a1a;border-radius:20px;padding:16px 20px;max-width:380px;">
+            <div style="font-size:11px;color:#666;font-weight:600;margin-bottom:8px;" id="smsPrevSender">InviteForge</div>
+            <div style="background:#2a2a2a;border-radius:14px;padding:14px 16px;font-size:14px;line-height:1.7;color:#f0f0f0;" id="smsPrevBody">Your personalised invitation message will appear here.</div>
+          </div>
+        </div>
+
+        <!-- SUMMARY -->
+        <div class="send-summary" style="margin-bottom:28px;">
+          <div class="send-summary-row"><span class="label">Event</span><span class="value" id="sumEvent">—</span></div>
+          <div class="send-summary-row"><span class="label">Date</span><span class="value" id="sumDate">—</span></div>
+          <div class="send-summary-row"><span class="label">Venue</span><span class="value" id="sumVenue">—</span></div>
+          <div class="send-summary-row"><span class="label">Design Template</span><span class="value" id="sumTemplate">Luxury Dark</span></div>
+          <div class="send-summary-row"><span class="label">Guests Ready</span><span class="value" id="sumGuests" style="color:var(--green);">0 ready</span></div>
+          <div class="send-summary-row"><span class="label">Estimated Cost</span><span class="value cost-highlight" id="sumCost">£0.00</span></div>
+        </div>
+
+        <!-- TEST SEND -->
+        <div class="form-group">
+          <label class="form-label">Test Send (recommended)</label>
+          <div style="display:flex;gap:10px;">
+            <input class="form-input" id="testNumber" placeholder="Your mobile number (07xxx)" style="flex:1;"/>
+            <button onclick="sendTest()" style="padding:14px 24px;background:rgba(201,169,110,0.1);border:1px solid rgba(201,169,110,0.3);color:var(--gold);border-radius:10px;cursor:pointer;font-weight:600;white-space:nowrap;">Send Test</button>
+          </div>
+          <div id="testResult" style="font-size:13px;margin-top:8px;"></div>
+        </div>
+
+        <!-- Cost breakdown -->
+        <div id="costBreakdown" style="background:rgba(201,169,110,0.06);border:1px solid rgba(201,169,110,0.15);border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:13px;color:var(--grey);">£50 invite + £0.30 × <span id="costCount">0</span> SMS</div>
+          <div style="font-size:22px;font-family:'Playfair Display',serif;font-weight:700;color:var(--gold);">£<span id="costTotal">0.00</span></div>
+        </div>
+        <button class="send-btn" id="sendAllBtn" onclick="sendAll()">🚀 Send to All <span id="sendCount">0</span> Guests</button>
+        <div class="sending-progress" id="sendingProgress">
+          <div style="display:flex;justify-content:space-between;margin-top:20px;margin-bottom:4px;">
+            <span style="font-size:13px;color:var(--grey);">Sending invitations...</span>
+            <span style="font-size:13px;color:var(--gold);" id="sendProgressPct">0%</span>
+          </div>
+          <div class="sending-bar-wrap"><div class="sending-bar" id="sendingBar"></div></div>
+          <div class="sending-log" id="sendingLog"></div>
+        </div>
+        <div class="step-nav">
+          <button class="btn-back" onclick="goStep(4)">← Back</button>
+        </div>
+      </div>
+
+      <!-- STEP 6 — DASHBOARD -->
+      <div class="step-content" id="step6">
+        <div class="step-heading">Live Dashboard 📊</div>
+        <div class="step-sub">Track every invite sent and every RSVP received in real time.</div>
+        <div class="dashboard-stats">
+          <div class="dash-stat"><div class="num" id="dSent">0</div><div class="label">Invites Sent</div></div>
+          <div class="dash-stat"><div class="num" id="dRsvp">0</div><div class="label">RSVPs Received</div></div>
+          <div class="dash-stat"><div class="num" id="dAttending">0</div><div class="label">Attending</div></div>
+          <div class="dash-stat"><div class="num" id="dFailed">0</div><div class="label">Failed</div></div>
+        </div>
+        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+          <button onclick="sendReminders()" style="padding:10px 20px;background:rgba(201,169,110,0.1);border:1px solid rgba(201,169,110,0.3);color:var(--gold);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">🔔 Send Reminders to Non-Responders</button>
+          <button onclick="exportCSV()" style="padding:10px 20px;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--white);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">📥 Export CSV</button>
+        </div>
+        <div style="border-radius:12px;border:1px solid var(--border);overflow:hidden;">
+          <table class="dashboard-table">
+            <thead>
+              <tr><th>Guest</th><th>Number</th><th>Invite</th><th>RSVP</th><th>Attending</th><th>Guests</th></tr>
+            </thead>
+            <tbody id="dashboardBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- PREVIEW PANEL -->
+    <aside class="app-preview">
+      <div class="preview-label">Live Preview</div>
+      <div class="preview-phone">
+        <div class="preview-sms">
+          <div class="sender" id="prevSender">CarmelJames</div>
+          <div id="prevMessage">Fill in your event details to see a preview of your SMS here.</div>
+        </div>
+      </div>
+      <div class="preview-invite" id="prevInvite">
+        <div class="preview-invite-header" id="prevInviteHeader" style="background:linear-gradient(160deg,#0a0e1a,#1e2d45);">🎬 Video / Photo</div>
+        <div class="preview-invite-body">
+          <div class="preview-invite-title" id="prevEventName">Your Event Name</div>
+          <div class="preview-invite-detail" id="prevEventDetails">Date & Venue will appear here</div>
+        </div>
+      </div>
+      <div class="preview-stats" id="prevStats" style="display:none;">
+        <div class="preview-stat-row"><span class="k">Guests Loaded</span><span class="v" id="ps-guests" style="color:var(--gold);">0</span></div>
+        <div class="preview-stat-row"><span class="k">With Numbers</span><span class="v" id="ps-numbers" style="color:var(--green);">0</span></div>
+        <div class="preview-stat-row"><span class="k">Missing Numbers</span><span class="v" id="ps-missing" style="color:#f59e0b;">0</span></div>
+        <div class="preview-stat-row"><span class="k">Est. Cost</span><span class="v" id="ps-cost" style="color:var(--gold);">£0.00</span></div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    // ── STATE ──
+    const state = {
+      step: 1,
+      eventType: '', eventName: '', eventDate: '', eventTime: '', eventVenue: '',
+      template: 'luxury', senderName: '',
+      tone: 'formal', message: '',
+      guests: [], // [{name, number, valid}]
+      mediaUrl: '',
+      eventId: sessionStorage.getItem('if_event_id') || '',
+      inviteUrl: sessionStorage.getItem('if_invite_url') || '',
+      sentCount: null,
+      failedCount: null,
+      testMode: true,   // updated from /api/config on load
+    };
+
+    // Load config from backend
+    fetch('/api/config').then(r => r.json()).then(c => {
+      state.testMode = c.test_mode;
+    }).catch(() => {});
+
+    // ── SMS CHARACTER COUNTER ──
+    function checkSmsLength() {
+      const msg = document.getElementById('messageText');
+      if (!msg) return;
+      const len = msg.value.replace('[InviteLink]', 'http://x.co/xxxxxxxx?name=NameHere').length;
+      let counter = document.getElementById('smsCounter');
+      if (!counter) {
+        counter = document.createElement('div');
+        counter.id = 'smsCounter';
+        counter.style.cssText = 'font-size:12px;margin-top:6px;text-align:right;';
+        msg.parentNode.appendChild(counter);
+      }
+      const msgs = Math.ceil(len / 160);
+      const color = len > 160 ? '#f59e0b' : 'var(--grey)';
+      counter.style.color = color;
+      counter.textContent = `${len} chars · ${msgs} SMS credit${msgs > 1 ? 's' : ''} per guest`;
+    }
+
+    const templateColors = {
+      luxury:      { bg: 'linear-gradient(160deg,#0a0e1a,#1e2d45)', color: '#c9a96e' },
+      garden:      { bg: 'linear-gradient(160deg,#f0fdf4,#bbf7d0)', color: '#166534' },
+      minimal:     { bg: 'linear-gradient(160deg,#ffffff,#f1f5f9)', color: '#0f172a' },
+      celebration: { bg: 'linear-gradient(160deg,#1e1b4b,#4c1d95)', color: '#fbbf24' },
+      corporate:   { bg: 'linear-gradient(160deg,#0f172a,#1e293b)', color: '#94a3b8' },
+    };
+
+    const toneMessages = {
+      formal:    "Dear [Name] & Family, {HOST} personally invite you to their {TYPE}. It would be a true honour to have you join us on this special day. Please click the link below to view your full invitation and confirm your attendance.\n[InviteLink]",
+      warm:      "Dear [Name] & Family, {HOST} would love for you to join them at their {TYPE}. It genuinely wouldn't be the same without you there. Tap the link below for the full invitation — we can't wait to celebrate with you!\n[InviteLink]",
+      fun:       "Hey [Name]! 🎉 {HOST} are throwing a {TYPE} and you're on the list! Click below for all the details — it's going to be one to remember!\n[InviteLink]",
+      corporate: "Dear [Name], on behalf of {HOST} we are pleased to formally invite you to our {TYPE}. Please click the link below to view the full details and confirm your attendance.\n[InviteLink]",
+    };
+
+    // ── NAVIGATION ──
+    function goStep(n) {
+      document.getElementById('step' + state.step).classList.remove('active');
+      state.step = n;
+      document.getElementById('step' + n).classList.add('active');
+      document.getElementById('stepLabel').textContent = n;
+      updateProgress();
+      if (n === 3) generateMessage();
+      if (n === 5) updateSummary(); // async — kicks off event creation
+      if (n === 6) buildDashboard();
+      window.scrollTo(0,0);
+    }
+
+    function updateProgress() {
+      for (let i = 1; i <= 6; i++) {
+        const c = document.getElementById('sc' + i);
+        const l = document.getElementById('sl' + i);
+        c.className = 'step-circle';
+        if (i < state.step) { c.classList.add('done'); c.innerHTML = '✓'; if(l) l.classList.add('done'); }
+        else if (i === state.step) { c.classList.add('active'); c.innerHTML = i; if(l) l.classList.remove('done'); }
+        else { c.innerHTML = i; if(l) l.classList.remove('done'); }
+      }
+    }
+
+    // ── TEMPLATE SELECTION ──
+    function selectTemplate(t) {
+      document.querySelectorAll('.template-option').forEach(el => el.classList.remove('selected'));
+      document.getElementById('t-' + t).classList.add('selected');
+      state.template = t;
+      const tc = templateColors[t];
+      document.getElementById('prevInviteHeader').style.background = tc.bg;
+      document.getElementById('prevEventName').style.color = tc.color;
+      document.getElementById('sumTemplate').textContent = t.charAt(0).toUpperCase() + t.slice(1);
+    }
+
+    // ── TONE SELECTION ──
+    function selectTone(t) {
+      document.querySelectorAll('.tone-option').forEach(el => el.classList.remove('selected'));
+      document.getElementById('tone-' + t).classList.add('selected');
+      state.tone = t;
+      generateMessage();
+    }
+
+    function generateMessage() {
+      const name = document.getElementById('eventName').value || '{Event Name}';
+      const type = document.getElementById('eventType').value || 'event';
+      let msg = toneMessages[state.tone]
+        .replace('{HOST}', name)
+        .replace('{TYPE}', type.toLowerCase());
+      document.getElementById('messageText').value = msg;
+      state.message = msg;
+      updateMessagePreview();
+      checkSmsLength();
+    }
+
+    function updateMessagePreview() {
+      const msg = document.getElementById('messageText').value;
+      const preview = msg
+        .replace('[Name]', '<span class="name-placeholder">Emma Johnson</span>')
+        .replace('[InviteLink]', '<span style="color:var(--gold);font-weight:600;">🔗 [your invite link — auto-inserted on send]</span>');
+      document.getElementById('messagePreviewText').innerHTML = preview.replace(/\n/g, '<br>');
+    }
+
+    // ── GUEST UPLOAD / PASTE ──
+    function showFileStatus(msg, ok) {
+      const el = document.getElementById('fileStatus');
+      el.style.display = 'block';
+      el.style.background = ok ? 'rgba(34,197,94,0.1)' : 'rgba(245,158,11,0.1)';
+      el.style.border = '1px solid ' + (ok ? 'rgba(34,197,94,0.3)' : 'rgba(245,158,11,0.3)');
+      el.style.color = ok ? '#22c55e' : '#f59e0b';
+      el.textContent = msg;
+    }
+
+    function handleGuestUpload(input) {
+      const file = input.files[0];
+      if (!file) return;
+      showFileStatus('📂 Reading ' + file.name + '...', true);
+
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        const data = new Uint8Array(e.target.result);
+
+        // Detect ZIP by magic bytes (PK) or .zip extension
+        const isZip = (data[0] === 0x50 && data[1] === 0x4B) || file.name.toLowerCase().endsWith('.zip');
+
+        if (isZip) {
+          // Use JSZip to extract — Google Sheets exports ZIP with CSV files inside
+          try {
+            const zip = await JSZip.loadAsync(data);
+            // Find first CSV or spreadsheet file inside
+            let targetFile = null, targetName = '';
+            const entries = Object.keys(zip.files);
+            // Prefer .csv first, then .xlsx/.xls
+            for (const name of entries) {
+              if (!zip.files[name].dir && /\.(csv)$/i.test(name)) { targetFile = zip.files[name]; targetName = name; break; }
+            }
+            if (!targetFile) {
+              for (const name of entries) {
+                if (!zip.files[name].dir && /\.(xlsx|xls|ods)$/i.test(name)) { targetFile = zip.files[name]; targetName = name; break; }
+              }
+            }
+            if (!targetFile) {
+              showFileStatus('❌ No spreadsheet found inside ZIP. Try extracting it first.', false);
+              return;
+            }
+
+            if (/\.csv$/i.test(targetName)) {
+              // Parse CSV as text
+              const text = await targetFile.async('text');
+              const lines = text.trim().split('\n').filter(l => l.trim());
+              const rows = lines.map(l => l.split(/,|\t/).map(c => c.replace(/^"|"$/g, '').trim()));
+              extractGuestsFromRows(rows, targetName);
+            } else {
+              // Parse Excel/ODS with SheetJS
+              const arrayBuf = await targetFile.async('arraybuffer');
+              const wb = XLSX.read(new Uint8Array(arrayBuf), { type: 'array' });
+              const sheet = wb.Sheets[wb.SheetNames[0]];
+              const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+              extractGuestsFromRows(rows, targetName);
+            }
+          } catch(zipErr) {
+            showFileStatus('❌ Could not open ZIP file. Try extracting it first.', false);
+          }
+          return;
+        }
+
+        // Not a ZIP — try SheetJS (handles xlsx, xls, csv, ods)
+        try {
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+          extractGuestsFromRows(rows, file.name);
+        } catch(err) {
+          // Fallback: plain text / CSV
+          try {
+            const text = new TextDecoder().decode(data);
+            const lines = text.trim().split('\n').filter(l => l.trim());
+            const rows = lines.map(l => l.split(/,|\t/).map(c => c.replace(/^"|"$/g, '').trim()));
+            extractGuestsFromRows(rows, file.name);
+          } catch(err2) {
+            showFileStatus('❌ Could not read this file. Try pasting the data below instead.', false);
+          }
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function extractGuestsFromRows(rows, filename) {
+      // Auto-detect which columns have names and numbers
+      // Strategy: find columns where one looks like a name and another like a phone number
+      if (!rows || rows.length < 2) {
+        showFileStatus('⚠️ File seems empty. Try pasting the data below instead.', false);
+        return;
+      }
+
+      let nameCol = -1, numCol = -1;
+      // Check first 5 rows to detect columns
+      const sampleRows = rows.slice(0, 10);
+      const colCount = Math.max(...sampleRows.map(r => r.length));
+
+      for (let col = 0; col < colCount; col++) {
+        const vals = sampleRows.map(r => String(r[col] || '').trim()).filter(Boolean);
+        const looksLikeNumbers = vals.filter(v => /\d{7,}/.test(v.replace(/\s|-|\+|\(|\)/g, '')));
+        const looksLikeNames = vals.filter(v => /^[a-zA-Z]/.test(v) && v.length > 2 && !/^\d/.test(v));
+        if (looksLikeNumbers.length >= Math.min(2, vals.length) && numCol === -1) numCol = col;
+        if (looksLikeNames.length >= Math.min(2, vals.length) && nameCol === -1 && col !== numCol) nameCol = col;
+      }
+
+      // Fallback: assume col 0 = name, col 1 = number (or col 2 = number based on user's sheet)
+      if (nameCol === -1) nameCol = 0;
+      if (numCol === -1) numCol = nameCol === 0 ? 1 : 0;
+
+      const guests = [];
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rawName = String(row[nameCol] || '').trim();
+        const rawNum = String(row[numCol] || '').trim();
+        if (!rawName || !rawNum) continue;
+        // Skip header rows
+        if (/name|guest|contact/i.test(rawName) && /number|phone|mobile/i.test(rawNum)) continue;
+        const g = normaliseGuest(rawName, rawNum);
+        if (g) guests.push(g);
+      }
+
+      if (guests.length === 0) {
+        showFileStatus('⚠️ Found the file but couldn\'t detect names/numbers. Try pasting the data below.', false);
+        return;
+      }
+
+      state.guests = guests;
+      showFileStatus('✅ ' + (filename.length > 30 ? filename.substring(0,28)+'...' : filename) + ' loaded — ' + guests.length + ' guests found', true);
+      renderGuestTable();
+    }
+
+    function file_name_display(n) { return n.length > 30 ? n.substring(0,28)+'...' : n; }
+
+    function parseGuestPaste() {
+      const text = document.getElementById('guestPaste').value.trim();
+      if (!text) return;
+      const lines = text.split('\n').filter(l => l.trim());
+      const rows = lines.map(l => l.split(/,|\t/).map(c => c.trim()));
+      extractGuestsFromRows(rows, 'pasted data');
+      document.getElementById('fileStatus').style.display = 'none';
+    }
+
+    function normaliseGuest(name, rawNum) {
+      if (!name || !rawNum) return null;
+      const cleaned = rawNum.replace(/\s|-|\(|\)|\./g, '');
+      let number = cleaned;
+      if (/^07\d{9}$/.test(cleaned))          number = '+44' + cleaned.slice(1);
+      else if (/^7\d{9}$/.test(cleaned))       number = '+44' + cleaned;
+      else if (/^\+44\d{10}$/.test(cleaned))   number = cleaned;
+      else if (/^\+\d{10,15}$/.test(cleaned))  number = cleaned;  // international
+      else if (/^1\d{10}$/.test(cleaned))      number = '+' + cleaned; // US
+      else if (/^39\d{10,11}$/.test(cleaned))  number = '+' + cleaned; // Italy
+      const valid = /^\+\d{10,15}$/.test(number);
+      return { name, number, raw: rawNum, valid };
+    }
+
+    function parseGuestCSV(text) {
+      // Legacy — keep for compatibility
+      const lines = text.trim().split('\n').filter(l => l.trim());
+      const rows = lines.map(l => l.split(/,|\t/).map(c => c.trim()));
+      extractGuestsFromRows(rows, 'data');
+    }
+
+    function renderGuestTable() {
+      const valid = state.guests.filter(g => g.valid).length;
+      const invalid = state.guests.length - valid;
+      document.getElementById('guestResults').style.display = state.guests.length ? 'block' : 'none';
+      document.getElementById('prevStats').style.display = state.guests.length ? 'flex' : 'none';
+      document.getElementById('guestCount').innerHTML = `
+        <div class="guest-count-item"><div class="num">${state.guests.length}</div><div class="label">Total Guests</div></div>
+        <div class="guest-count-item"><div class="num" style="color:var(--green)">${valid}</div><div class="label">Ready to Send</div></div>
+        ${invalid ? `<div class="guest-count-item"><div class="num" style="color:#f59e0b">${invalid}</div><div class="label">Check Numbers</div></div>` : ''}
+      `;
+      const tbody = document.getElementById('guestTableBody');
+      tbody.innerHTML = state.guests.slice(0, 50).map((g, i) => `
+        <tr>
+          <td style="color:var(--grey)">${i + 1}</td>
+          <td>${g.name}</td>
+          <td style="font-family:monospace;font-size:12px;">${g.number}</td>
+          <td><span class="${g.valid ? 'status-ok' : 'status-warn'}">${g.valid ? '✓ Ready' : '⚠ Check'}</span></td>
+        </tr>
+      `).join('');
+      if (state.guests.length > 50) {
+        tbody.innerHTML += `<tr><td colspan="4" style="color:var(--grey);text-align:center;padding:12px;">...and ${state.guests.length - 50} more</td></tr>`;
+      }
+      document.getElementById('ps-guests').textContent = state.guests.length;
+      document.getElementById('ps-numbers').textContent = valid;
+      document.getElementById('ps-missing').textContent = invalid;
+      document.getElementById('ps-cost').textContent = '£' + (50 + valid * 0.30).toFixed(2);
+      document.getElementById('sendCount').textContent = valid;
+    }
+
+    // ── MEDIA UPLOAD ──
+    async function handleMediaUpload(input) {
+      if (!input.files[0]) return;
+      const file = input.files[0];
+      document.getElementById('mediaUpload').innerHTML = `<div class="upload-icon">⏳</div><h3>Uploading ${file.name}...</h3><p>Just a moment</p>`;
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/upload-media', { method: 'POST', body: formData });
+        const data = await res.json();
+        state.mediaUrl = data.url;
+        document.getElementById('mediaUpload').innerHTML = `<div class="upload-icon">✅</div><h3>${file.name}</h3><p style="color:var(--green)">Uploaded — will show on your invite page</p>`;
+      } catch(e) {
+        document.getElementById('mediaUpload').innerHTML = `<div class="upload-icon">❌</div><h3>Upload failed</h3><p>Try again or skip — you can add video later</p>`;
+      }
+    }
+
+    // ── SUMMARY + EVENT CREATION + INVITE PREVIEW ──
+    async function updateSummary() {
+      const valid = state.guests.filter(g => g.valid).length;
+      document.getElementById('sumEvent').textContent = document.getElementById('eventName').value || '—';
+      document.getElementById('sumDate').textContent = document.getElementById('eventDate').value || '—';
+      document.getElementById('sumVenue').textContent = document.getElementById('eventVenue').value || '—';
+      document.getElementById('sumGuests').textContent = `${valid} ready to send`;
+      document.getElementById('sumCost').textContent = `£${(50 + valid * 0.30).toFixed(2)}`;
+      document.getElementById('sendCount').textContent = valid;
+      // Cost breakdown card
+      if (document.getElementById('costCount')) document.getElementById('costCount').textContent = valid;
+      if (document.getElementById('costTotal')) document.getElementById('costTotal').textContent = (50 + valid * 0.30).toFixed(2);
+      // Button label
+      const btn = document.getElementById('sendAllBtn');
+      if (btn) {
+        if (state.testMode) {
+          btn.innerHTML = `🚀 Send to All ${valid} Guests <span style="font-size:12px;opacity:0.6;">(Test Mode — Free)</span>`;
+        } else {
+          btn.innerHTML = `💳 Pay & Send — £${(50 + valid * 0.30).toFixed(2)}`;
+        }
+      }
+
+      // Create/update the event on backend to get a real invite URL
+      try {
+        document.getElementById('inviteCreating').style.display = 'block';
+        document.getElementById('invitePreviewWrap').style.display = 'none';
+        const res = await fetch('/api/events', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            name: document.getElementById('eventName').value || 'Your Event',
+            type: document.getElementById('eventType').value || '',
+            date: document.getElementById('eventDate').value || '',
+            time: document.getElementById('eventTime').value || '',
+            venue: document.getElementById('eventVenue').value || '',
+            template: state.template,
+            message: document.getElementById('messageText').value || '',
+            sender: document.getElementById('senderName').value || 'CarmelJames',
+            media_url: state.mediaUrl || '',
+          })
+        });
+        const data = await res.json();
+        state.eventId = data.event_id;
+        state.inviteUrl = data.invite_url;
+        sessionStorage.setItem('if_event_id', data.event_id);
+        sessionStorage.setItem('if_invite_url', data.invite_url);
+
+        // Load iframe with a sample guest name
+        const sampleName = state.guests.length > 0 ? state.guests[0].name : 'Guest';
+        const iframeSrc = data.invite_url + '?name=' + encodeURIComponent(sampleName);
+        document.getElementById('inviteFrame').src = iframeSrc;
+        document.getElementById('inviteOpenBtn').href = iframeSrc;
+        document.getElementById('inviteCreating').style.display = 'none';
+        document.getElementById('invitePreviewWrap').style.display = 'block';
+
+        // Update SMS preview
+        const sender = document.getElementById('senderName').value || 'InviteForge';
+        const msg = document.getElementById('messageText').value || '';
+        // Inject real invite URL into message
+        const msgWithUrl = msg.replace(/https?:\/\/\S+/g, data.invite_url)
+          || msg + '\n' + data.invite_url;
+        const smsPreview = msgWithUrl.replace('[Name]', sampleName).substring(0, 160);
+        document.getElementById('smsPrevSender').textContent = sender;
+        document.getElementById('smsPrevBody').textContent = smsPreview + (msgWithUrl.length > 160 ? '...' : '');
+      } catch(e) {
+        document.getElementById('inviteCreating').innerHTML = '<div style="color:#f59e0b;padding:24px;">⚠️ Could not create invite — is the backend running?</div>';
+      }
+    }
+
+    // ── BUILD PERSONALISED SMS ──
+    function buildSms(guestName) {
+      let msg = document.getElementById('messageText').value || '';
+      const inviteUrl = state.inviteUrl
+        ? (state.inviteUrl + '?name=' + encodeURIComponent(guestName))
+        : 'inviteforge.co.uk/your-event';
+      // Replace [InviteLink] placeholder, then any hardcoded URL, then append if neither found
+      if (msg.includes('[InviteLink]')) {
+        msg = msg.replace('[InviteLink]', inviteUrl);
+      } else if (/https?:\/\/\S+/.test(msg)) {
+        msg = msg.replace(/https?:\/\/\S+/g, inviteUrl);
+      } else {
+        msg = msg.trimEnd() + '\n' + inviteUrl;
+      }
+      return msg.replace('[Name]', guestName);
+    }
+
+    // ── TEST SEND ──
+    async function sendTest() {
+      const num = document.getElementById('testNumber').value;
+      const result = document.getElementById('testResult');
+      if (!num) { result.innerHTML = '<span style="color:#f59e0b">Enter your mobile number first.</span>'; return; }
+      result.innerHTML = '<span style="color:var(--grey)">Sending test...</span>';
+      try {
+        const res = await fetch('/api/send-test', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            number: num,
+            message: buildSms('You'),
+            sender: document.getElementById('senderName').value || 'CarmelJames'
+          })
+        });
+        const data = await res.json();
+        result.innerHTML = data.success
+          ? '<span style="color:var(--green)">✅ Test sent! Check your phone.</span>'
+          : `<span style="color:var(--red)">❌ ${data.error}</span>`;
+      } catch(e) {
+        result.innerHTML = '<span style="color:var(--red)">❌ Could not reach server. Is the backend running?</span>';
+      }
+    }
+
+    // ── SEND ALL ──
+    async function sendAll() {
+      // Deduplicate by phone number
+      const seen = new Set();
+      const valid = state.guests.filter(g => {
+        if (!g.valid) return false;
+        if (seen.has(g.number)) return false;
+        seen.add(g.number);
+        return true;
+      });
+      if (!valid.length) return;
+
+      const sender = document.getElementById('senderName').value || 'CarmelJames';
+
+      // Payment gate: if not test mode, go via Stripe
+      if (!state.testMode && state.eventId) {
+        const btn = document.getElementById('sendAllBtn');
+        btn.disabled = true;
+        btn.textContent = 'Creating payment...';
+        try {
+          const res = await fetch('/api/create-checkout', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+              event_id: state.eventId,
+              guests: valid.map(g => ({name: g.name, number: g.number})),
+              message: document.getElementById('messageText').value || '',
+              sender,
+            })
+          });
+          const data = await res.json();
+          if (data.checkout_url) {
+            window.location.href = data.checkout_url;
+            return;
+          }
+        } catch(e) {
+          btn.disabled = false;
+          btn.innerHTML = `🚀 Pay & Send — £${(50 + valid.length * 0.30).toFixed(2)}`;
+          return;
+        }
+      }
+
+      // Test mode or post-payment: send directly
+      document.getElementById('sendAllBtn').disabled = true;
+      document.getElementById('sendingProgress').classList.add('active');
+      const log = document.getElementById('sendingLog');
+      const bar = document.getElementById('sendingBar');
+      const pct = document.getElementById('sendProgressPct');
+      log.innerHTML = '<div class="log-line info">Starting sendout...</div>';
+      let sent = 0, failed = 0;
+
+      for (let i = 0; i < valid.length; i++) {
+        const g = valid[i];
+        const personalised = buildSms(g.name);
+        try {
+          const res = await fetch('/api/send-invite', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ name: g.name, number: g.number, message: personalised, sender })
+          });
+          const data = await res.json();
+          if (data.success) {
+            sent++; g.sendStatus = 'sent';
+            log.innerHTML += `<div class="log-line ok">✅ ${g.name} (${g.number})</div>`;
+          } else {
+            failed++; g.sendStatus = 'failed'; g.sendError = data.error;
+            log.innerHTML += `<div class="log-line err">❌ ${g.name} — ${data.error}</div>`;
+          }
+        } catch(e) {
+          failed++; g.sendStatus = 'failed'; g.sendError = 'connection error';
+          log.innerHTML += `<div class="log-line err">❌ ${g.name} — connection error</div>`;
+        }
+        const progress = Math.round(((i+1)/valid.length)*100);
+        bar.style.width = progress + '%';
+        pct.textContent = progress + '%';
+        log.scrollTop = log.scrollHeight;
+        // Rate limit: 300ms between sends
+        if (i < valid.length - 1) await new Promise(r => setTimeout(r, 300));
+      }
+      log.innerHTML += `<div class="log-line info">─────────────────</div>`;
+      log.innerHTML += `<div class="log-line ok">Done! ✅ Sent: ${sent} | ❌ Failed: ${failed}</div>`;
+      state.sentCount = sent;
+      state.failedCount = failed;
+      setTimeout(() => goStep(6), 2000);
+    }
+
+    // ── DASHBOARD ──
+    let dashboardPollTimer = null;
+
+    function buildDashboard() {
+      document.getElementById('dSent').textContent = state.sentCount != null ? state.sentCount : state.guests.filter(g=>g.valid).length;
+      document.getElementById('dFailed').textContent = state.failedCount != null ? state.failedCount : 0;
+      renderDashboardTable({});
+      // Start live RSVP polling
+      if (dashboardPollTimer) clearInterval(dashboardPollTimer);
+      loadDashboardRsvps();
+      dashboardPollTimer = setInterval(loadDashboardRsvps, 15000);
+    }
+
+    async function loadDashboardRsvps() {
+      if (!state.eventId) return;
+      try {
+        const res = await fetch(`/api/event/${state.eventId}/rsvps`);
+        const data = await res.json();
+        // Build lookup: guest_name → rsvp data
+        const rsvpMap = {};
+        (data.rsvps || []).forEach(r => {
+          rsvpMap[r.guest_name.toLowerCase()] = r;
+        });
+        document.getElementById('dRsvp').textContent = data.total || 0;
+        document.getElementById('dAttending').textContent = data.attending || 0;
+        renderDashboardTable(rsvpMap);
+      } catch(e) {}
+    }
+
+    function renderDashboardTable(rsvpMap) {
+      const tbody = document.getElementById('dashboardBody');
+      tbody.innerHTML = state.guests.filter(g=>g.valid).map(g => {
+        const inviteStatus = g.sendStatus === 'sent'
+          ? '<span class="badge badge-sent">✓ Sent</span>'
+          : g.sendStatus === 'failed'
+            ? `<span class="badge badge-failed" title="${g.sendError||''}">✗ Failed</span>`
+            : '<span class="badge badge-pending">Queued</span>';
+        const rsvp = rsvpMap[g.name.toLowerCase()];
+        const rsvpBadge = rsvp
+          ? (rsvp.attending === 'yes'
+              ? `<span class="badge badge-yes">✓ Yes</span>`
+              : `<span class="badge badge-no">✗ No</span>`)
+          : '<span class="badge badge-waiting">Pending</span>';
+        const attending = rsvp && rsvp.attending === 'yes' ? rsvp.guests_count || 1 : '—';
+        return `
+        <tr>
+          <td><strong>${g.name}</strong></td>
+          <td style="font-family:monospace;font-size:12px;color:var(--grey)">${g.number}</td>
+          <td>${inviteStatus}</td>
+          <td>${rsvpBadge}</td>
+          <td>${attending}</td>
+          <td>${rsvp && rsvp.dietary ? rsvp.dietary : '—'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function sendReminders() {
+      const nonResponders = state.guests.filter(g => g.valid && !g.rsvpReceived);
+      if (!nonResponders.length) { alert('Everyone has responded!'); return; }
+      if (!confirm(`Send a reminder to ${nonResponders.length} guests who haven't responded yet?`)) return;
+      const sender = document.getElementById('senderName')?.value || 'CarmelJames';
+      let sent = 0;
+      for (const g of nonResponders) {
+        const reminderMsg = `Hi ${g.name}, just a gentle reminder — please RSVP for the event when you get a moment! ${state.inviteUrl}?name=${encodeURIComponent(g.name)}`;
+        try {
+          const res = await fetch('/api/send-invite', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ name: g.name, number: g.number, message: reminderMsg, sender })
+          });
+          const data = await res.json();
+          if (data.success) sent++;
+        } catch(e) {}
+        await new Promise(r => setTimeout(r, 300));
+      }
+      alert(`Reminders sent to ${sent} guests.`);
+    }
+
+    function exportCSV() {
+      const rows = [['Name','Number','Invite Sent','RSVP','Attending','Dietary']];
+      state.guests.filter(g=>g.valid).forEach(g => {
+        rows.push([
+          g.name, g.number,
+          g.sendStatus === 'sent' ? 'Yes' : (g.sendStatus === 'failed' ? 'Failed' : 'Pending'),
+          g.rsvp ? (g.rsvp.attending === 'yes' ? 'Attending' : 'Declined') : 'Pending',
+          g.rsvp && g.rsvp.attending === 'yes' ? g.rsvp.guests_count : '—',
+          g.rsvp ? g.rsvp.dietary || '—' : '—',
+        ]);
+      });
+      const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+      const a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+      a.download = 'invite-tracker.csv';
+      a.click();
+    }
+
+    // ── LIVE PREVIEW UPDATE ──
+    function updatePreview() {
+      const name = document.getElementById('eventName').value || 'Your Event';
+      const date = document.getElementById('eventDate').value || '';
+      const venue = document.getElementById('eventVenue').value || '';
+      const sender = document.getElementById('senderName') ? document.getElementById('senderName').value : '';
+      document.getElementById('prevEventName').textContent = name;
+      document.getElementById('prevEventDetails').textContent = [date, venue].filter(Boolean).join(' · ') || 'Date & Venue';
+      document.getElementById('prevSender').textContent = sender || 'InviteForge';
+      const msg = document.getElementById('messageText') ? document.getElementById('messageText').value : '';
+      if (msg) {
+        const preview = msg.replace('[Name]', 'Emma Johnson').substring(0, 120) + (msg.length > 120 ? '...' : '');
+        document.getElementById('prevMessage').textContent = preview;
+      }
+      updateMessagePreview();
+    }
+
+    // ── SENDER NAME WARNING ──
+    function checkSenderName() {
+      const val = (document.getElementById('senderName')?.value || '').toLowerCase();
+      const warn = document.getElementById('senderWarning');
+      if (!warn) return;
+      warn.style.display = (!val || val === 'inviteforge') ? 'block' : 'none';
+    }
+
+    // ── HANDLE ?sent=1 REDIRECT FROM STRIPE ──
+    (function() {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('sent') === '1') {
+        const eid = p.get('event') || state.eventId;
+        if (eid) state.eventId = eid;
+        // Show success state — go straight to dashboard
+        history.replaceState({}, '', window.location.pathname);
+        state.sentCount = state.guests.filter(g=>g.valid).length;
+        state.failedCount = 0;
+        state.guests.filter(g=>g.valid).forEach(g => g.sendStatus = 'sent');
+        setTimeout(() => goStep(6), 100);
+      }
+    })();
+
+    // ── DRAG & DROP — prevent browser from navigating to dropped files ──
+    // Block default drag behaviour on the whole page
+    document.addEventListener('dragover', function(e) { e.preventDefault(); });
+    document.addEventListener('drop', function(e) { e.preventDefault(); });
+
+    // Upload zone drag & drop
+    const csvDrop = document.getElementById('csvDrop');
+    if (csvDrop) {
+      csvDrop.addEventListener('dragover', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        csvDrop.classList.add('dragging');
+      });
+      csvDrop.addEventListener('dragleave', function(e) {
+        csvDrop.classList.remove('dragging');
+      });
+      csvDrop.addEventListener('drop', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        csvDrop.classList.remove('dragging');
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        // Feed into the same handler as the file input
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        document.getElementById('csvFile').files = dt.files;
+        handleGuestUpload(document.getElementById('csvFile'));
+      });
+    }
+
+    // Init
+    document.getElementById('messageText') && (document.getElementById('messageText').oninput = function() {
+      state.message = this.value;
+      updateMessagePreview();
+      updatePreview();
+    });
+  </script>
+
+</body>
+</html>
