@@ -59,9 +59,25 @@ if STRIPE_SECRET_KEY:
         pass
 
 # ── EVENT STORAGE ──
-EVENTS_FILE = Path("events.json")
+EVENTS_FILE  = Path("events.json")
+GIST_ID      = os.getenv("GIST_ID", "")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 
 def load_events() -> dict:
+    if GIST_ID and GITHUB_TOKEN:
+        try:
+            import urllib.request
+            req = urllib.request.Request(
+                f"https://api.github.com/gists/{GIST_ID}",
+                headers={"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
+            )
+            import ssl
+            ctx = ssl._create_unverified_context()
+            with urllib.request.urlopen(req, context=ctx) as r:
+                data = json.load(r)
+            return json.loads(data["files"]["events.json"]["content"])
+        except Exception:
+            pass
     if EVENTS_FILE.exists():
         try:
             return json.loads(EVENTS_FILE.read_text())
@@ -70,7 +86,24 @@ def load_events() -> dict:
     return {}
 
 def save_events(events: dict):
-    EVENTS_FILE.write_text(json.dumps(events, indent=2, default=str))
+    content = json.dumps(events, indent=2, default=str)
+    if GIST_ID and GITHUB_TOKEN:
+        try:
+            import urllib.request, ssl
+            body = json.dumps({"files": {"events.json": {"content": content}}}).encode()
+            req = urllib.request.Request(
+                f"https://api.github.com/gists/{GIST_ID}",
+                data=body, method="PATCH",
+                headers={"Authorization": f"token {GITHUB_TOKEN}", "Content-Type": "application/json",
+                         "Accept": "application/vnd.github.v3+json"}
+            )
+            ctx = ssl._create_unverified_context()
+            with urllib.request.urlopen(req, context=ctx):
+                pass
+            return
+        except Exception:
+            pass
+    EVENTS_FILE.write_text(content)
 
 # ── MODELS ──
 class TestSendRequest(BaseModel):
