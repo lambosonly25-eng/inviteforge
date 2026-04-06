@@ -384,6 +384,16 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
 
+  <!-- Loading overlay — hides content until fonts/media ready -->
+  <div id="pageLoader" style="position:fixed;inset:0;background:#050914;display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.6s ease;">
+    <div style="text-align:center;">
+      <div style="width:48px;height:48px;border:3px solid rgba(201,169,110,0.2);border-top-color:#c9a96e;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px;"></div>
+      <div style="color:#c9a96e;font-size:12px;letter-spacing:3px;text-transform:uppercase;">Loading your invitation</div>
+    </div>
+  </div>
+  <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+  <script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');l.style.opacity='0';setTimeout(function(){l.style.display='none'},600);});</script>
+
   <section class="hero">
     <div class="hero-media" id="heroMedia">{HERO_MEDIA}</div>
     <div class="hero-gradient"></div>
