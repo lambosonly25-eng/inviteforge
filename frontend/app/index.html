@@ -861,23 +861,23 @@
 
     function extractGuestsFromRows(rows, filename) {
       // Auto-detect which columns have names and numbers
-      // Strategy: find columns where one looks like a name and another like a phone number
-      if (!rows || rows.length < 2) {
+      if (!rows || rows.length < 1) {
         showFileStatus('⚠️ File seems empty. Try pasting the data below instead.', false);
         return;
       }
 
       let nameCol = -1, numCol = -1;
-      // Check first 5 rows to detect columns
       const sampleRows = rows.slice(0, 10);
       const colCount = Math.max(...sampleRows.map(r => r.length));
+      // Need at least 1 match for small inputs (single entry typed live)
+      const minMatch = Math.max(1, Math.min(2, Math.floor(sampleRows.length * 0.5)));
 
       for (let col = 0; col < colCount; col++) {
         const vals = sampleRows.map(r => String(r[col] || '').trim()).filter(Boolean);
         const looksLikeNumbers = vals.filter(v => /\d{7,}/.test(v.replace(/\s|-|\+|\(|\)/g, '')));
-        const looksLikeNames = vals.filter(v => /^[a-zA-Z]/.test(v) && v.length > 2 && !/^\d/.test(v));
-        if (looksLikeNumbers.length >= Math.min(2, vals.length) && numCol === -1) numCol = col;
-        if (looksLikeNames.length >= Math.min(2, vals.length) && nameCol === -1 && col !== numCol) nameCol = col;
+        const looksLikeNames = vals.filter(v => /^[a-zA-Z]/.test(v) && v.length > 1 && !/^\d/.test(v));
+        if (looksLikeNumbers.length >= minMatch && numCol === -1) numCol = col;
+        if (looksLikeNames.length >= minMatch && nameCol === -1 && col !== numCol) nameCol = col;
       }
 
       // Fallback: assume col 0 = name, col 1 = number (or col 2 = number based on user's sheet)
