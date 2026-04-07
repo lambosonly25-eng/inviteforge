@@ -1,6 +1,7 @@
 """
 InviteForge Backend — FastAPI
 Handles event creation, invite pages, SMS sending, RSVP tracking, payments
+v2
 """
 
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
