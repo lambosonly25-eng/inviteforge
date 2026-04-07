@@ -95,12 +95,11 @@ def send_email(to: str, subject: str, html_body: str) -> bool:
     body = json.dumps({"from": FROM_EMAIL, "to": [to], "subject": subject, "html": html_body}).encode()
     req = _req.Request("https://api.resend.com/emails", data=body, method="POST",
                        headers={"Authorization": f"Bearer {api_key}",
-                                "Content-Type": "application/json"})
+                                "Content-Type": "application/json",
+                                "User-Agent": "python-urllib/3.11",
+                                "Accept": "application/json"})
     try:
-        ctx = _ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = _ssl.CERT_NONE
-        _req.urlopen(req, context=ctx, timeout=10)
+        _req.urlopen(req, timeout=10)
         _email_last_error = ""
         return True
     except _req.HTTPError as e:
