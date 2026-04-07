@@ -612,13 +612,13 @@
             <div class="send-card-icon">📱</div>
             <div class="send-card-title">From My Phone (SMS)</div>
             <div class="send-card-sub">Opens your Messages app — from your real number, zero spam filtering</div>
-            <div class="send-card-price best">£25 flat</div>
+            <div class="send-card-price best">£75 flat <span style="font-size:10px;font-weight:500;color:var(--grey);">(£50 invite + £25 send)</span></div>
           </div>
           <div class="send-card" id="cardWA" onclick="selectSendMethod('phone_whatsapp')">
             <div class="send-card-icon">💬</div>
             <div class="send-card-title">From My WhatsApp</div>
             <div class="send-card-sub">Pre-fills WhatsApp per guest — 100% delivered, never filtered</div>
-            <div class="send-card-price best">£25 flat</div>
+            <div class="send-card-price best">£75 flat <span style="font-size:10px;font-weight:500;color:var(--grey);">(£50 invite + £25 send)</span></div>
           </div>
         </div>
         <!-- Cost breakdown (Twilio only) -->
@@ -1747,13 +1747,13 @@
         if (state.testMode) {
           btn.innerHTML = `📱 Open SMS Send Page — ${valid} Guests`;
         } else {
-          btn.innerHTML = `📱 Pay £25 — Send from My Phone (SMS)`;
+          btn.innerHTML = `📱 Pay £75 — Send from My Phone (SMS)`;
         }
       } else {
         if (state.testMode) {
           btn.innerHTML = `💬 Open WhatsApp Send Page — ${valid} Guests`;
         } else {
-          btn.innerHTML = `💬 Pay £25 — Send from My WhatsApp`;
+          btn.innerHTML = `💬 Pay £75 — Send from My WhatsApp`;
         }
       }
     }
