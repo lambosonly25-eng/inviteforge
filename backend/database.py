@@ -160,7 +160,7 @@ def save_to_gist():
         }
         conn.close()
 
-        _gist_request(
+        result = _gist_request(
             "PATCH",
             {
                 "files": {
@@ -169,6 +169,8 @@ def save_to_gist():
                 }
             },
         )
+        if result is None:
+            print("[ERROR] save_to_gist: Gist PATCH failed — data may not be persisted")
 
     # Run in background thread so writes never block the request
     threading.Thread(target=_do_save, daemon=True).start()
