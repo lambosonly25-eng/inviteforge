@@ -740,6 +740,17 @@
   </div>
 
   <script>
+    // ── AUTH GATE — redirect to login unless JWT, magic link, or Stripe return ──
+    (function() {
+      const p = new URLSearchParams(window.location.search);
+      const hasMagicLink = p.get('token') && p.get('event');
+      const hasStripeReturn = p.get('sent') === '1';
+      const hasJwt = !!localStorage.getItem('if_jwt');
+      if (!hasJwt && !hasMagicLink && !hasStripeReturn) {
+        window.location.replace('/login');
+      }
+    })();
+
     // ── HTML ESCAPE HELPER — always use for user data in innerHTML ──
     function esc(str) {
       return String(str == null ? '' : str)
