@@ -497,6 +497,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
       <div class="hero-cta">
         <a href="#rsvp" class="btn-rsvp">RSVP Now</a>
         <a href="#details" class="btn-details">View Details</a>
+        <a id="calBtn" href="#" class="btn-details" style="display:none;" target="_blank" rel="noopener">📅 Add to Calendar</a>
       </div>
     </div>
     <div class="scroll-hint">↓</div>
@@ -578,6 +579,32 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
       document.getElementById('greeting').textContent = 'Dear ' + guestName + ',';
       document.getElementById('rsvpName').value = guestName;
     }}
+
+    // Build Google Calendar link
+    (function() {{
+      const rawDate = '{RAW_DATE}';
+      const rawTime = '{RAW_TIME}';
+      const eventName = '{EVENT_NAME_CAL}';
+      const venue = '{VENUE_CAL}';
+      if (!rawDate) return;
+      try {{
+        const d = rawDate.replace(/-/g, '');
+        let start = d, end = d;
+        if (rawTime) {{
+          const [h, m] = rawTime.split(':');
+          const startH = String(h).padStart(2,'0'), startM = String(m).padStart(2,'0');
+          const endH = String(parseInt(h)+2).padStart(2,'0');
+          start = d + 'T' + startH + startM + '00';
+          end   = d + 'T' + endH   + startM + '00';
+        }}
+        const cal = 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+          '&text=' + encodeURIComponent(eventName) +
+          '&dates=' + start + '/' + end +
+          (venue ? '&location=' + encodeURIComponent(venue) : '');
+        const btn = document.getElementById('calBtn');
+        if (btn) {{ btn.href = cal; btn.style.display = 'inline-block'; }}
+      }} catch(e) {{}}
+    }})();
 
     function selectAttending(val) {{
       document.getElementById('rsvpAttending').value = val;
@@ -686,8 +713,9 @@ def build_invite_page(event: dict, event_id: str) -> str:
     else:
         deadline_card = ""
 
+    event_name_safe = html.escape(event.get("name", "You're Invited"))
     return INVITE_TEMPLATE.format(
-        EVENT_NAME=html.escape(event.get("name", "You're Invited")),
+        EVENT_NAME=event_name_safe,
         EVENT_ID=html.escape(event_id),
         HERO_GRADIENT=hero_gradient,
         HERO_MEDIA=hero_media,
@@ -698,6 +726,10 @@ def build_invite_page(event: dict, event_id: str) -> str:
         VENUE_CARD=venue_card,
         TIME_CARD=time_card,
         DEADLINE_CARD=deadline_card,
+        RAW_DATE=html.escape(raw_date),
+        RAW_TIME=html.escape(raw_time),
+        EVENT_NAME_CAL=html.escape(event.get("name", "")),
+        VENUE_CAL=html.escape(venue),
     )
 
 
@@ -997,6 +1029,47 @@ async def handle_rsvp(event_id: str, data: RSVPRequest, request: Request):
         existing.append(rsvp)
     events[event_id]["rsvps"] = existing
     save_events(events)
+
+    # Notify host by email every time an RSVP comes in
+    host_email = events[event_id].get("host_email", "")
+    if host_email:
+        event_name = html.escape(events[event_id].get("name", "Your Event"))
+        guest_name = html.escape(data.guest_name)
+        attending_str = "✅ Attending" if data.attending == "yes" else "❌ Can't make it"
+        guests_str = f" (+{data.guests_count - 1} more)" if data.attending == "yes" and data.guests_count > 1 else ""
+        dietary_str = f"<br/><strong>Dietary:</strong> {html.escape(data.dietary)}" if data.dietary else ""
+        msg_str = f"<br/><strong>Message:</strong> {html.escape(data.message)}" if data.message else ""
+        auth_token = events[event_id].get("auth_token", "")
+        dashboard_link = f"{PUBLIC_URL}/app/?event={event_id}&token={auth_token}" if auth_token else f"{PUBLIC_URL}/login"
+        rsvp_email_html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/>
+<style>
+  body{{font-family:'Helvetica Neue',Arial,sans-serif;background:#0a0e1a;color:#f8f6f0;margin:0;padding:40px 20px;}}
+  .card{{max-width:520px;margin:0 auto;background:#111827;border-radius:16px;overflow:hidden;border:1px solid rgba(201,169,110,0.2);}}
+  .header{{background:linear-gradient(160deg,#0a0e1a,#1e2d45);padding:32px 40px;}}
+  .logo{{font-size:24px;font-weight:700;color:#c9a96e;}}
+  .logo span{{color:#f8f6f0;}}
+  .body{{padding:36px 40px;}}
+  h2{{font-size:20px;color:#f8f6f0;margin:0 0 20px;}}
+  .rsvp-box{{background:rgba(201,169,110,0.06);border:1px solid rgba(201,169,110,0.2);border-radius:10px;padding:20px 24px;margin-bottom:24px;font-size:15px;line-height:1.8;}}
+  .name{{font-size:18px;font-weight:700;color:#c9a96e;margin-bottom:8px;}}
+  .btn{{display:block;width:100%;padding:16px;background:#c9a96e;color:#0a0e1a;text-align:center;text-decoration:none;border-radius:10px;font-size:15px;font-weight:700;box-sizing:border-box;}}
+  .footer{{padding:20px 40px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;font-size:12px;color:#4b5563;}}
+</style></head>
+<body><div class="card">
+  <div class="header"><div class="logo">Invite<span>Forge</span></div></div>
+  <div class="body">
+    <h2>New RSVP for {event_name}</h2>
+    <div class="rsvp-box">
+      <div class="name">{guest_name}{guests_str}</div>
+      <strong>{attending_str}</strong>{dietary_str}{msg_str}
+    </div>
+    <a href="{dashboard_link}" class="btn">View Full Dashboard →</a>
+  </div>
+  <div class="footer">InviteForge · <a href="{PUBLIC_URL}/privacy" style="color:#c9a96e;">Privacy</a></div>
+</div></body></html>"""
+        send_email(host_email, f"New RSVP: {data.guest_name} — {event_name}", rsvp_email_html)
+
     return {"success": True, "message": "RSVP received", "updated": updated}
 
 
@@ -1071,9 +1144,12 @@ async def get_event_status(event_id: str):
         raise HTTPException(404, detail="Event not found")
     return {
         "event_id": event_id,
+        "event_name": event.get("name", ""),
         "sent": event.get("sent", False),
         "sent_count": event.get("sent_count", 0),
         "failed_count": event.get("failed_count", 0),
+        "invite_url": event.get("invite_url", ""),
+        "has_email": bool(event.get("host_email", "")),
     }
 
 
