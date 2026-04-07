@@ -261,6 +261,41 @@
     .preview-stat-row .k { font-size: 12px; color: var(--grey); }
     .preview-stat-row .v { font-size: 13px; font-weight: 600; }
 
+    /* SEND METHOD CARDS */
+    .send-method-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
+    .send-card {
+      border: 2px solid var(--border); border-radius: 14px; padding: 18px 14px;
+      cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .send-card:hover { border-color: rgba(201,169,110,0.4); }
+    .send-card.selected { border-color: var(--gold); background: rgba(201,169,110,0.05); }
+    .send-card-icon { font-size: 26px; margin-bottom: 8px; }
+    .send-card-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
+    .send-card-sub { font-size: 11px; color: var(--grey); margin-bottom: 10px; line-height: 1.4; }
+    .send-card-price { font-size: 13px; font-weight: 700; color: var(--gold); }
+    .send-card-price.best { color: #22c55e; }
+
+    /* PHONE SEND MODAL */
+    #phoneSendModal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.88); z-index: 900; overflow-y: auto; padding: 24px 16px;
+    }
+    .phone-modal-inner { max-width: 480px; margin: 0 auto; background: var(--navy-mid); border-radius: 20px; border: 1px solid var(--border); overflow: hidden; }
+    .phone-modal-header { padding: 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .phone-modal-title { font-size: 18px; font-weight: 700; }
+    .phone-modal-sub { font-size: 12px; color: var(--grey); margin-top: 3px; }
+    .phone-modal-progress { padding: 12px 24px; background: rgba(201,169,110,0.04); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+    .phone-modal-list { max-height: 55vh; overflow-y: auto; }
+    .phone-guest-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid rgba(255,255,255,0.04); gap: 12px; }
+    .phone-guest-row.done { opacity: 0.4; }
+    .phone-guest-info .gname { font-size: 14px; font-weight: 600; }
+    .phone-guest-info .gnum { font-size: 12px; color: var(--grey); font-family: monospace; }
+    .phone-send-btn { flex-shrink: 0; padding: 10px 16px; border: none; border-radius: 50px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; white-space: nowrap; font-family: 'Inter', sans-serif; text-decoration: none; display: inline-block; }
+    .phone-send-btn.sms-btn { background: #3b82f6; color: #fff; }
+    .phone-send-btn.wa-btn { background: #25d366; color: #fff; }
+    .phone-send-btn.done-btn { background: rgba(34,197,94,0.15); color: var(--green); pointer-events: none; }
+    .phone-modal-footer { padding: 20px 24px; border-top: 1px solid var(--border); display: flex; gap: 12px; }
+
     @media (max-width: 900px) {
       .app-body { grid-template-columns: 1fr; }
       .app-preview { display: none; }
@@ -268,6 +303,7 @@
       .dashboard-stats { grid-template-columns: 1fr 1fr; }
       .form-row { grid-template-columns: 1fr; }
       .template-grid { grid-template-columns: 1fr 1fr; }
+      .send-method-cards { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -563,7 +599,29 @@
           ❌ Payment cancelled — your event is still saved. Try again when you're ready.
         </div>
 
-        <!-- Cost breakdown -->
+        <!-- SEND METHOD SELECTION -->
+        <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;">Choose How to Send</div>
+        <div class="send-method-cards">
+          <div class="send-card selected" id="cardTwilio" onclick="selectSendMethod('twilio')">
+            <div class="send-card-icon">📡</div>
+            <div class="send-card-title">Auto-Send via InviteForge</div>
+            <div class="send-card-sub">We send every SMS automatically, personalised per guest</div>
+            <div class="send-card-price" id="twilioCardPrice">£50.00</div>
+          </div>
+          <div class="send-card" id="cardSMS" onclick="selectSendMethod('phone_sms')">
+            <div class="send-card-icon">📱</div>
+            <div class="send-card-title">From My Phone (SMS)</div>
+            <div class="send-card-sub">Opens your Messages app — from your real number, zero spam filtering</div>
+            <div class="send-card-price best">£25 flat</div>
+          </div>
+          <div class="send-card" id="cardWA" onclick="selectSendMethod('phone_whatsapp')">
+            <div class="send-card-icon">💬</div>
+            <div class="send-card-title">From My WhatsApp</div>
+            <div class="send-card-sub">Pre-fills WhatsApp per guest — 100% delivered, never filtered</div>
+            <div class="send-card-price best">£25 flat</div>
+          </div>
+        </div>
+        <!-- Cost breakdown (Twilio only) -->
         <div id="costBreakdown" style="background:rgba(201,169,110,0.06);border:1px solid rgba(201,169,110,0.15);border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
           <div style="font-size:13px;color:var(--grey);">£50 invite + £0.30 × <span id="costCount">0</span> SMS</div>
           <div style="font-size:22px;font-family:'Playfair Display',serif;font-weight:700;color:var(--gold);">£<span id="costTotal">0.00</span></div>
@@ -653,6 +711,7 @@
       authToken: sessionStorage.getItem('if_auth_token') || localStorage.getItem('if_auth_token') || '',
       sentCount: null,
       failedCount: null,
+      sendMethod: 'twilio',  // 'twilio' | 'phone_sms' | 'phone_whatsapp'
       testMode: true,   // updated from /api/config on load
     };
 
@@ -1045,15 +1104,9 @@
       // Cost breakdown card
       if (document.getElementById('costCount')) document.getElementById('costCount').textContent = valid;
       if (document.getElementById('costTotal')) document.getElementById('costTotal').textContent = (50 + valid * 0.30).toFixed(2);
-      // Button label
-      const btn = document.getElementById('sendAllBtn');
-      if (btn) {
-        if (state.testMode) {
-          btn.innerHTML = `🚀 Send to All ${valid} Guests <span style="font-size:12px;opacity:0.6;">(Test Mode — Free)</span>`;
-        } else {
-          btn.innerHTML = `💳 Pay & Send — £${(50 + valid * 0.30).toFixed(2)}`;
-        }
-      }
+      if (document.getElementById('twilioCardPrice')) document.getElementById('twilioCardPrice').textContent = `£${(50 + valid * 0.30).toFixed(2)}`;
+      // Button label + card selection — delegate to selectSendMethod
+      selectSendMethod(state.sendMethod);
 
       // Create the event on backend — only once. If we already have an eventId, just reload the iframe.
       const sampleName = state.guests.length > 0 ? state.guests[0].name : 'Guest';
@@ -1207,6 +1260,43 @@
       const sender = document.getElementById('senderName').value || '';
       if (!sender) {
         showSendError('No sender name set. Go back to Step 2 and enter a sender name (e.g. "SarahWeds").');
+        return;
+      }
+
+      // ── PHONE-BASED SEND (SMS or WhatsApp from user's own phone) ──
+      if (state.sendMethod === 'phone_sms' || state.sendMethod === 'phone_whatsapp') {
+        if (!state.testMode && state.eventId) {
+          // Production: gate through Stripe £25 flat
+          const btn = document.getElementById('sendAllBtn');
+          btn.disabled = true;
+          btn.textContent = 'Creating payment...';
+          try {
+            const res = await fetch('/api/create-phone-checkout', {
+              method: 'POST',
+              headers: {'Content-Type':'application/json'},
+              body: JSON.stringify({
+                event_id: state.eventId,
+                auth_token: state.authToken,
+                method: state.sendMethod,
+              })
+            });
+            const data = await res.json();
+            if (data.checkout_url) {
+              sessionStorage.setItem('if_send_method', state.sendMethod);
+              sessionStorage.setItem('if_guests', JSON.stringify(valid));
+              localStorage.setItem('if_guests_' + state.eventId, JSON.stringify(valid));
+              window.location.href = data.checkout_url;
+              return;
+            }
+          } catch(e) {
+            btn.disabled = false;
+            selectSendMethod(state.sendMethod);
+            return;
+          }
+        } else {
+          // Test mode: open modal directly (no payment)
+          openPhoneSendModal(state.sendMethod);
+        }
         return;
       }
 
@@ -1584,15 +1674,24 @@
 
         restoreGuestsFromStorage(eid);
 
-        // Mark all valid guests as sent (server fired the blast)
-        state.guests.filter(g=>g.valid).forEach(g => g.sendStatus = 'sent');
-        state.sentCount = state.guests.filter(g=>g.valid).length;
-        state.failedCount = 0;
+        const method = p.get('method') || sessionStorage.getItem('if_send_method') || 'twilio';
 
-        // Clear the session guest cache now it's been consumed
-        sessionStorage.removeItem('if_guests');
-
-        setTimeout(() => goStep(6), 100);
+        if (method === 'phone_sms' || method === 'phone_whatsapp') {
+          // Phone-based send: go to step 5 and open the send modal
+          state.sendMethod = method;
+          sessionStorage.removeItem('if_guests'); // don't clear — still needed for modal
+          setTimeout(() => {
+            goStep(5);
+            setTimeout(() => openPhoneSendModal(method), 400);
+          }, 100);
+        } else {
+          // Twilio auto-send: server fired the blast, go to dashboard
+          state.guests.filter(g=>g.valid).forEach(g => g.sendStatus = 'sent');
+          state.sentCount = state.guests.filter(g=>g.valid).length;
+          state.failedCount = 0;
+          sessionStorage.removeItem('if_guests');
+          setTimeout(() => goStep(6), 100);
+        }
       } else if (p.get('token') && p.get('event')) {
         // Magic link login — restore session from URL params
         const eid = p.get('event');
@@ -1622,6 +1721,117 @@
         }, 100);
       }
     })();
+
+    // ── SEND METHOD SELECTION ──
+    function selectSendMethod(method) {
+      state.sendMethod = method;
+      const methodMap = { cardTwilio: 'twilio', cardSMS: 'phone_sms', cardWA: 'phone_whatsapp' };
+      Object.entries(methodMap).forEach(([id, m]) => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('selected', m === method);
+      });
+      // Show/hide Twilio cost breakdown
+      const cb = document.getElementById('costBreakdown');
+      if (cb) cb.style.display = method === 'twilio' ? 'flex' : 'none';
+      // Update send button label
+      const valid = state.guests.filter(g => g.valid).length;
+      const btn = document.getElementById('sendAllBtn');
+      if (!btn) return;
+      if (method === 'twilio') {
+        if (state.testMode) {
+          btn.innerHTML = `🚀 Send to All ${valid} Guests <span style="font-size:12px;opacity:0.6;">(Test Mode — Free)</span>`;
+        } else {
+          btn.innerHTML = `💳 Pay & Send — £${(50 + valid * 0.30).toFixed(2)}`;
+        }
+      } else if (method === 'phone_sms') {
+        if (state.testMode) {
+          btn.innerHTML = `📱 Open SMS Send Page — ${valid} Guests`;
+        } else {
+          btn.innerHTML = `📱 Pay £25 — Send from My Phone (SMS)`;
+        }
+      } else {
+        if (state.testMode) {
+          btn.innerHTML = `💬 Open WhatsApp Send Page — ${valid} Guests`;
+        } else {
+          btn.innerHTML = `💬 Pay £25 — Send from My WhatsApp`;
+        }
+      }
+    }
+
+    // ── PHONE SEND MODAL ──
+    let _phoneSentCount = 0;
+    let _phoneTotalCount = 0;
+
+    function buildPhoneMessage(name) {
+      const eventName = document.getElementById('eventName')?.value || 'our event';
+      const url = state.inviteUrl
+        ? `${state.inviteUrl}?name=${encodeURIComponent(name)}`
+        : '';
+      return `Hi ${name}! You're invited to ${eventName}. Tap here for your invite: ${url}`;
+    }
+
+    function openPhoneSendModal(type) {
+      const valid = state.guests.filter(g => g.valid);
+      if (!valid.length) { showSendError('No valid guests to send to.'); return; }
+      _phoneSentCount = 0;
+      _phoneTotalCount = valid.length;
+      const titleEl = document.getElementById('phoneSendTitle');
+      const subEl = document.getElementById('phoneSendSub');
+      if (titleEl) titleEl.textContent = type === 'phone_sms' ? '📱 Send via SMS' : '💬 Send via WhatsApp';
+      if (subEl) subEl.textContent = type === 'phone_sms'
+        ? 'Tap each button → Messages opens → hit Send → come back'
+        : 'Tap each button → WhatsApp opens → hit Send → come back';
+      updatePhoneModalCounter();
+      const list = document.getElementById('phoneSendList');
+      list.innerHTML = valid.map((g, i) => {
+        const msg = buildPhoneMessage(g.name);
+        const num = g.number.replace(/^\+/, '');
+        const href = type === 'phone_sms'
+          ? `sms:${g.number}?body=${encodeURIComponent(msg)}`
+          : `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
+        const btnClass = type === 'phone_sms' ? 'sms-btn' : 'wa-btn';
+        const btnLabel = type === 'phone_sms' ? '📱 Send SMS' : '💬 WhatsApp';
+        return `<div class="phone-guest-row" id="pgrow-${i}">
+          <div class="phone-guest-info">
+            <div class="gname">${g.name}</div>
+            <div class="gnum">${g.number}</div>
+          </div>
+          <a href="${href}" class="phone-send-btn ${btnClass}" id="pgbtn-${i}"
+            onclick="markPhoneGuestSent(${i})" target="_blank">${btnLabel}</a>
+        </div>`;
+      }).join('');
+      document.getElementById('phoneSendModal').style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function markPhoneGuestSent(idx) {
+      _phoneSentCount++;
+      updatePhoneModalCounter();
+      const row = document.getElementById('pgrow-' + idx);
+      const btn = document.getElementById('pgbtn-' + idx);
+      if (row) row.classList.add('done');
+      if (btn) { btn.textContent = '✅ Sent'; btn.className = 'phone-send-btn done-btn'; }
+      const valid = state.guests.filter(g => g.valid);
+      if (valid[idx]) valid[idx].sendStatus = 'sent';
+      state.sentCount = _phoneSentCount;
+    }
+
+    function updatePhoneModalCounter() {
+      const el = document.getElementById('phoneSendProgress');
+      if (el) el.textContent = `${_phoneSentCount} / ${_phoneTotalCount} sent`;
+    }
+
+    function closePhoneSendModal() {
+      document.getElementById('phoneSendModal').style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    function phoneSendDone() {
+      closePhoneSendModal();
+      state.sentCount = _phoneSentCount;
+      state.failedCount = _phoneTotalCount - _phoneSentCount;
+      goStep(6);
+    }
 
     // ── SERVICE WORKER REGISTRATION ──
     if ('serviceWorker' in navigator) {
@@ -1663,6 +1873,28 @@
       updatePreview();
     });
   </script>
+
+  <!-- PHONE SEND MODAL -->
+  <div id="phoneSendModal">
+    <div class="phone-modal-inner">
+      <div class="phone-modal-header">
+        <div>
+          <div class="phone-modal-title" id="phoneSendTitle">Send via Phone</div>
+          <div class="phone-modal-sub" id="phoneSendSub">Tap each button to send</div>
+        </div>
+        <button onclick="closePhoneSendModal()" style="background:none;border:1px solid var(--border);color:var(--grey);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:16px;flex-shrink:0;">✕</button>
+      </div>
+      <div class="phone-modal-progress">
+        <span style="color:var(--grey);">Progress</span>
+        <span style="font-weight:700;color:var(--gold);" id="phoneSendProgress">0 / 0 sent</span>
+      </div>
+      <div class="phone-modal-list" id="phoneSendList"></div>
+      <div class="phone-modal-footer">
+        <button onclick="phoneSendDone()" style="flex:1;padding:16px;background:var(--gold);color:var(--navy);border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">✅ Done — Go to Dashboard</button>
+        <button onclick="closePhoneSendModal()" style="padding:16px 20px;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--grey);border-radius:10px;font-size:15px;cursor:pointer;font-family:'Inter',sans-serif;">Cancel</button>
+      </div>
+    </div>
+  </div>
 
 </body>
 </html>
