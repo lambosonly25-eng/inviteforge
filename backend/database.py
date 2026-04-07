@@ -108,8 +108,8 @@ def load_from_gist():
                      edata.get("created", datetime.now().isoformat())),
                 )
             conn.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[CRITICAL] load_from_gist: failed to load events — starting empty: {e}")
 
     # ── users.json ──
     uf = result["files"].get("users.json")
@@ -122,8 +122,8 @@ def load_from_gist():
                     (uid, udata["email"], udata["password_hash"], udata.get("created_at", "")),
                 )
             conn.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[CRITICAL] load_from_gist: failed to load users — starting empty: {e}")
 
     conn.close()
 
@@ -199,16 +199,18 @@ def save_events(events: dict):
     Drop-in replacement for the old save_events() in main.py.
     """
     conn = get_conn()
-    with _write_lock:
-        for eid, edata in events.items():
-            conn.execute(
-                "INSERT OR REPLACE INTO events (id, user_id, data_json, created_at) VALUES (?, ?, ?, ?)",
-                (eid, edata.get("user_id"),
-                 json.dumps(edata, default=str),
-                 edata.get("created", datetime.now().isoformat())),
-            )
-        conn.commit()
-    conn.close()
+    try:
+        with _write_lock:
+            for eid, edata in events.items():
+                conn.execute(
+                    "INSERT OR REPLACE INTO events (id, user_id, data_json, created_at) VALUES (?, ?, ?, ?)",
+                    (eid, edata.get("user_id"),
+                     json.dumps(edata, default=str),
+                     edata.get("created", datetime.now().isoformat())),
+                )
+            conn.commit()
+    finally:
+        conn.close()
     save_to_gist()
 
 
@@ -235,13 +237,15 @@ def create_user(email: str, password_hash: str) -> dict:
     user_id = str(uuid.uuid4())
     created_at = datetime.now().isoformat()
     conn = get_conn()
-    with _write_lock:
-        conn.execute(
-            "INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)",
-            (user_id, email.lower().strip(), password_hash, created_at),
-        )
-        conn.commit()
-    conn.close()
+    try:
+        with _write_lock:
+            conn.execute(
+                "INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)",
+                (user_id, email.lower().strip(), password_hash, created_at),
+            )
+            conn.commit()
+    finally:
+        conn.close()
     save_to_gist()
     return {"id": user_id, "email": email.lower().strip(), "created_at": created_at}
 
