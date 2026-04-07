@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terms of Service — InviteForge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: #0a0e1a;
+      color: #f8f6f0;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background-color: rgba(10, 14, 26, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(201, 169, 110, 0.2);
+      padding: 0 2rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #c9a96e;
+      text-decoration: none;
+      letter-spacing: 0.02em;
+    }
+
+    .back-link {
+      font-size: 0.875rem;
+      color: #c9a96e;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 500;
+      transition: opacity 0.2s ease;
+    }
+
+    .back-link:hover {
+      opacity: 0.75;
+    }
+
+    /* ── Main content ────────────────────────────────── */
+    main {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 4rem 2rem 6rem;
+    }
+
+    .page-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      font-weight: 700;
+      color: #c9a96e;
+      margin-bottom: 0.5rem;
+      line-height: 1.2;
+    }
+
+    .effective-date {
+      font-size: 0.875rem;
+      color: rgba(248, 246, 240, 0.5);
+      margin-bottom: 3rem;
+      font-style: italic;
+    }
+
+    .intro {
+      font-size: 1.05rem;
+      color: rgba(248, 246, 240, 0.85);
+      margin-bottom: 3rem;
+      padding: 1.5rem;
+      border-left: 3px solid #c9a96e;
+      background: rgba(201, 169, 110, 0.05);
+      border-radius: 0 6px 6px 0;
+    }
+
+    section {
+      margin-bottom: 3rem;
+    }
+
+    h2 {
+      font-family: 'Inter', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #c9a96e;
+      margin-bottom: 1rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid rgba(201, 169, 110, 0.2);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    p {
+      color: rgba(248, 246, 240, 0.85);
+      margin-bottom: 1rem;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    ul, ol {
+      color: rgba(248, 246, 240, 0.85);
+      padding-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    li {
+      margin-bottom: 0.5rem;
+    }
+
+    li:last-child {
+      margin-bottom: 0;
+    }
+
+    strong {
+      color: #f8f6f0;
+      font-weight: 600;
+    }
+
+    a {
+      color: #c9a96e;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    a:hover {
+      opacity: 0.8;
+    }
+
+    .highlight-box {
+      background: rgba(201, 169, 110, 0.08);
+      border: 1px solid rgba(201, 169, 110, 0.25);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .highlight-box p {
+      margin-bottom: 0;
+    }
+
+    .warning-box {
+      background: rgba(255, 80, 80, 0.07);
+      border: 1px solid rgba(255, 80, 80, 0.25);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .warning-box p {
+      margin-bottom: 0;
+      color: rgba(248, 246, 240, 0.85);
+    }
+
+    .pricing-table {
+      background: rgba(201, 169, 110, 0.06);
+      border: 1px solid rgba(201, 169, 110, 0.2);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 1rem;
+    }
+
+    .pricing-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.9rem 1.25rem;
+      border-bottom: 1px solid rgba(201, 169, 110, 0.1);
+    }
+
+    .pricing-row:last-child {
+      border-bottom: none;
+    }
+
+    .pricing-label {
+      color: rgba(248, 246, 240, 0.8);
+      font-size: 0.95rem;
+    }
+
+    .pricing-amount {
+      color: #c9a96e;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    /* ── Footer ──────────────────────────────────────── */
+    footer {
+      background: rgba(0, 0, 0, 0.3);
+      border-top: 1px solid rgba(201, 169, 110, 0.15);
+      padding: 1.5rem 2rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: rgba(248, 246, 240, 0.45);
+    }
+
+    footer a {
+      color: rgba(201, 169, 110, 0.7);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      color: #c9a96e;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+
+    @media (max-width: 600px) {
+      main {
+        padding: 2.5rem 1.25rem 4rem;
+      }
+
+      header {
+        padding: 0 1.25rem;
+      }
+
+      .pricing-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="/" class="logo">InviteForge</a>
+    <a href="/app/" class="back-link">← Back to App</a>
+  </header>
+
+  <main>
+    <h1 class="page-title">Terms of Service</h1>
+    <p class="effective-date">Effective date: April 2026</p>
+
+    <div class="intro">
+      These Terms of Service govern your use of InviteForge ("the Service"), a digital invitation creation and SMS delivery platform operated at <strong>inviteforge.onrender.com</strong>. By using InviteForge, you agree to these terms in full. Please read them carefully before placing an order.
+    </div>
+
+    <!-- 1. Service Description -->
+    <section>
+      <h2>1. What InviteForge Does</h2>
+      <p>InviteForge allows event hosts — including wedding planners, birthday organisers, corporate event managers, and private individuals — to:</p>
+      <ul>
+        <li>Create personalised digital invitation messages</li>
+        <li>Upload a guest list of mobile phone numbers</li>
+        <li>Send SMS invitations to all guests in a single action ("SMS blast")</li>
+        <li>Collect and view RSVP responses from guests</li>
+      </ul>
+      <p>InviteForge is a business-to-consumer (B2C) platform. "You" refers to the event host placing the order. We are not responsible for the content of events, the accuracy of guest lists, or the behaviour of event attendees.</p>
+    </section>
+
+    <!-- 2. Pricing -->
+    <section>
+      <h2>2. Pricing</h2>
+      <p>Our pricing is straightforward and transparent. You pay per event, with a per-guest SMS charge on top:</p>
+
+      <div class="pricing-table">
+        <div class="pricing-row">
+          <span class="pricing-label">Event creation fee (per event)</span>
+          <span class="pricing-amount">£50.00</span>
+        </div>
+        <div class="pricing-row">
+          <span class="pricing-label">SMS delivery charge (per guest)</span>
+          <span class="pricing-amount">£0.30</span>
+        </div>
+        <div class="pricing-row">
+          <span class="pricing-label">Example: 1 event + 100 guests</span>
+          <span class="pricing-amount">£80.00 total</span>
+        </div>
+      </div>
+
+      <p style="margin-top: 1rem;">All prices are in <strong>GBP (£)</strong> and include VAT where applicable. The total cost is displayed clearly at checkout before you confirm payment. Pricing is subject to change; any changes will not affect orders already placed.</p>
+    </section>
+
+    <!-- 3. Payment -->
+    <section>
+      <h2>3. Payment</h2>
+      <p>All payments are processed securely by <strong>Stripe</strong>. We accept major debit and credit cards. InviteForge does not store your card details — these are handled entirely within Stripe's PCI-compliant payment environment.</p>
+      <p>Payment is taken at the point of checkout, before SMS delivery begins. By completing payment, you authorise InviteForge to charge the displayed amount to your payment method.</p>
+      <p>You will receive a payment receipt from Stripe to your registered email address.</p>
+    </section>
+
+    <!-- 4. Refund Policy -->
+    <section>
+      <h2>4. Refund Policy</h2>
+      <p><strong>General rule:</strong> payments are <strong>non-refundable</strong> once the SMS blast has been successfully sent. This is because the primary cost — Twilio SMS delivery — is incurred immediately and cannot be recovered once messages are dispatched.</p>
+
+      <p><strong>Exception — technical failure:</strong> If a technical failure on InviteForge's side prevents more than 50% of your guest list from receiving their SMS invitation, you are entitled to a <strong>full refund</strong> of the amount paid for that event. To claim a refund under this exception:</p>
+      <ul>
+        <li>Email <a href="mailto:support@inviteforge.co.uk">support@inviteforge.co.uk</a> within 7 days of the failed send</li>
+        <li>Include your event name and the email address used at checkout</li>
+        <li>We will review Twilio delivery logs and confirm eligibility within 5 business days</li>
+        <li>Approved refunds are processed back to your original payment method within 10 business days</li>
+      </ul>
+
+      <div class="warning-box">
+        <p>Delivery failures caused by individual handset issues, network carrier blocks, guests opting out of SMS, or incorrect phone numbers provided by you do not qualify for a refund. InviteForge is only responsible for technical failures within our control.</p>
+      </div>
+
+      <p style="margin-top: 1rem;">If you cancel your order <strong>before</strong> the SMS blast is sent, a refund may be available at our discretion. Contact us as soon as possible at <a href="mailto:support@inviteforge.co.uk">support@inviteforge.co.uk</a>.</p>
+    </section>
+
+    <!-- 5. User Responsibilities -->
+    <section>
+      <h2>5. Your Responsibilities as an Event Host</h2>
+      <p>By using InviteForge, you confirm and agree that:</p>
+      <ul>
+        <li>You have the <strong>consent of every guest</strong> on your list to receive an SMS message from you about your event. Uploading phone numbers without the owner's knowledge or permission is strictly prohibited.</li>
+        <li>You will not use InviteForge to send <strong>unsolicited or spam messages</strong> to individuals who have not expressed willingness to receive event-related communications from you.</li>
+        <li>You comply with the <strong>UK Privacy and Electronic Communications Regulations (PECR)</strong>, which govern direct marketing by electronic means including SMS.</li>
+        <li>All phone numbers on your guest list are <strong>correct and current</strong>. You accept responsibility for any failed deliveries resulting from incorrect numbers you have provided.</li>
+        <li>The <strong>content</strong> of your invitation message is lawful, accurate, and not misleading.</li>
+        <li>You are at least <strong>18 years old</strong>.</li>
+      </ul>
+    </section>
+
+    <!-- 6. Acceptable Use -->
+    <section>
+      <h2>6. Acceptable Use Policy</h2>
+      <p>InviteForge is designed for personal and professional event invitations. Permitted use cases include:</p>
+      <ul>
+        <li>Weddings and civil ceremonies</li>
+        <li>Birthday parties, anniversaries, and celebrations</li>
+        <li>Corporate events, product launches, and team gatherings</li>
+        <li>Charity events, fundraisers, and community occasions</li>
+        <li>Private dinner parties and social gatherings</li>
+      </ul>
+
+      <p>The following uses are <strong>strictly prohibited</strong>:</p>
+      <ul>
+        <li>Political campaigning or canvassing of any kind</li>
+        <li>Adult content, sexual services, or age-restricted promotions</li>
+        <li>Harassment, threats, or messages designed to intimidate recipients</li>
+        <li>Any form of spam, bulk unsolicited messaging, or cold outreach</li>
+        <li>Impersonating another person, business, or organisation</li>
+        <li>Distributing malware, phishing links, or fraudulent content</li>
+        <li>Anything that violates UK law or Twilio's Messaging Policies</li>
+      </ul>
+
+      <p>InviteForge reserves the right to review event content where there is reasonable suspicion of misuse. Violation of this policy will result in immediate suspension of your account and forfeiture of any payment made.</p>
+    </section>
+
+    <!-- 7. Twilio Messaging Policies -->
+    <section>
+      <h2>7. Twilio's Messaging Policies</h2>
+      <p>SMS delivery is powered by Twilio. As a user of InviteForge, your use of the SMS delivery feature is also subject to <a href="https://www.twilio.com/en-us/legal/messaging-policy" target="_blank" rel="noopener">Twilio's Messaging Policy</a>. By using InviteForge, you agree to comply with Twilio's acceptable use requirements, including all rules around consent, opt-out mechanisms, and prohibited content categories.</p>
+      <p>InviteForge may be required to suspend or terminate your access if Twilio flags activity on your account as a policy violation.</p>
+    </section>
+
+    <!-- 8. Account Suspension -->
+    <section>
+      <h2>8. Suspension and Termination</h2>
+      <p>InviteForge reserves the right to suspend or permanently terminate your access to the Service if:</p>
+      <ul>
+        <li>You breach any provision of these Terms of Service</li>
+        <li>Your use of the platform violates Twilio's Messaging Policies</li>
+        <li>We receive credible complaints from SMS recipients about unsolicited messages sent via your account</li>
+        <li>We are required to do so by law, regulation, or court order</li>
+        <li>We reasonably suspect fraudulent activity on your account</li>
+      </ul>
+      <p>In the event of suspension for terms violation, no refund will be issued for any unused portion of your payment. Where suspension is due to an error on our part, a fair refund will be arranged.</p>
+    </section>
+
+    <!-- 9. Service Availability -->
+    <section>
+      <h2>9. Service Availability</h2>
+      <p>InviteForge is provided on a <strong>best-effort basis</strong>. We do not guarantee 100% uptime and do not offer a formal Service Level Agreement (SLA).</p>
+      <p>The platform is hosted on Render's cloud infrastructure, and SMS delivery depends on Twilio's network. Occasional downtime for maintenance, updates, or third-party outages may occur.</p>
+      <p>We will make reasonable efforts to notify users of planned maintenance in advance. Unplanned outages will be communicated as promptly as possible via the website or email.</p>
+      <p>Where a service outage prevents your SMS blast from being sent and you have already paid, the refund policy in Section 4 applies.</p>
+    </section>
+
+    <!-- 10. Intellectual Property -->
+    <section>
+      <h2>10. Intellectual Property</h2>
+      <p>The InviteForge platform, including its design, code, branding, and written content, is the intellectual property of InviteForge. You may not copy, reproduce, modify, or distribute any part of the platform without our prior written consent.</p>
+      <p>The content of your invitation message — the text, event name, and details you enter — remains yours. By submitting it through InviteForge, you grant us a limited licence to process and transmit it solely for the purpose of delivering your SMS invitations.</p>
+    </section>
+
+    <!-- 11. Limitation of Liability -->
+    <section>
+      <h2>11. Limitation of Liability</h2>
+      <p>To the maximum extent permitted by UK law:</p>
+      <ul>
+        <li>InviteForge's total liability to you for any claim arising from your use of the Service is limited to the <strong>amount you paid for the specific event</strong> in question.</li>
+        <li>We are not liable for any indirect, incidental, consequential, or special damages, including loss of profits, loss of reputation, or disappointment caused by failed or delayed SMS delivery.</li>
+        <li>We are not liable for failures caused by third-party services (Twilio, Stripe, Render) that are outside our reasonable control.</li>
+        <li>Nothing in these terms limits our liability for death or personal injury caused by negligence, fraudulent misrepresentation, or any other matter that cannot be excluded under UK law.</li>
+      </ul>
+    </section>
+
+    <!-- 12. Privacy -->
+    <section>
+      <h2>12. Privacy</h2>
+      <p>Your use of InviteForge is also governed by our <a href="/privacy.html">Privacy Policy</a>, which is incorporated into these Terms by reference. By using the Service, you agree to the collection and use of data as described in that policy.</p>
+      <p>As an event host, you are responsible for ensuring that your collection and submission of guest phone numbers complies with UK GDPR and PECR. InviteForge processes guest data on your behalf as a data processor and will handle it in accordance with our Privacy Policy.</p>
+    </section>
+
+    <!-- 13. Changes to Terms -->
+    <section>
+      <h2>13. Changes to These Terms</h2>
+      <p>We may update these Terms of Service from time to time. When we make material changes, we will update the effective date at the top of this page. Continued use of InviteForge after any changes constitutes your acceptance of the revised terms.</p>
+      <p>For significant changes, we will make reasonable efforts to notify active users by email.</p>
+    </section>
+
+    <!-- 14. Governing Law -->
+    <section>
+      <h2>14. Governing Law and Disputes</h2>
+      <p>These Terms of Service are governed by the laws of <strong>England and Wales</strong>. Any disputes arising from your use of InviteForge will be subject to the exclusive jurisdiction of the courts of England and Wales.</p>
+      <p>We aim to resolve all disputes amicably. If you have a complaint, please contact us first at <a href="mailto:support@inviteforge.co.uk">support@inviteforge.co.uk</a> and we will do our best to reach a fair resolution before any formal proceedings are commenced.</p>
+    </section>
+
+    <!-- 15. Contact -->
+    <section>
+      <h2>15. Contact Us</h2>
+      <p>For questions about these terms, billing queries, or to report misuse:</p>
+      <ul>
+        <li>Email: <a href="mailto:support@inviteforge.co.uk">support@inviteforge.co.uk</a></li>
+        <li>Website: <a href="https://inviteforge.onrender.com">inviteforge.onrender.com</a></li>
+      </ul>
+      <p>We aim to respond to all enquiries within 2 business days.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2026 InviteForge</p>
+    <div class="footer-links">
+      <a href="/privacy.html">Privacy Policy</a>
+      <a href="/terms.html">Terms of Service</a>
+      <a href="mailto:support@inviteforge.co.uk">support@inviteforge.co.uk</a>
+    </div>
+  </footer>
+
+</body>
+</html>
