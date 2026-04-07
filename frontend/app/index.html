@@ -709,6 +709,7 @@
       eventId: sessionStorage.getItem('if_event_id') || localStorage.getItem('if_event_id') || '',
       inviteUrl: sessionStorage.getItem('if_invite_url') || localStorage.getItem('if_invite_url') || '',
       authToken: sessionStorage.getItem('if_auth_token') || localStorage.getItem('if_auth_token') || '',
+      eventName: localStorage.getItem('if_event_name') || '',
       sentCount: null,
       failedCount: null,
       sendMethod: 'twilio',  // 'twilio' | 'phone_sms' | 'phone_whatsapp'
@@ -1135,12 +1136,14 @@
           state.eventId = data.event_id;
           state.inviteUrl = data.invite_url;
           state.authToken = data.auth_token || '';
+          state.eventName = document.getElementById('eventName').value || '';
           sessionStorage.setItem('if_event_id', data.event_id);
           sessionStorage.setItem('if_invite_url', data.invite_url);
           sessionStorage.setItem('if_auth_token', data.auth_token || '');
           localStorage.setItem('if_event_id', data.event_id);
           localStorage.setItem('if_invite_url', data.invite_url);
           localStorage.setItem('if_auth_token', data.auth_token || '');
+          localStorage.setItem('if_event_name', state.eventName);
 
           const iframeSrc = data.invite_url + '?name=' + encodeURIComponent(sampleName);
           document.getElementById('inviteFrame').src = iframeSrc;
@@ -1767,16 +1770,24 @@
     let _phoneTotalCount = 0;
 
     function buildPhoneMessage(name) {
-      const eventName = document.getElementById('eventName')?.value || 'our event';
-      const url = state.inviteUrl
-        ? `${state.inviteUrl}?name=${encodeURIComponent(name)}`
-        : '';
+      const eventName = state.eventName
+        || document.getElementById('eventName')?.value
+        || localStorage.getItem('if_event_name')
+        || 'our event';
+      const baseUrl = state.inviteUrl || localStorage.getItem('if_invite_url') || '';
+      const url = baseUrl ? `${baseUrl}?name=${encodeURIComponent(name)}` : '';
       return `Hi ${name}! You're invited to ${eventName}. Tap here for your invite: ${url}`;
     }
 
     function openPhoneSendModal(type) {
       const valid = state.guests.filter(g => g.valid);
       if (!valid.length) { showSendError('No valid guests to send to.'); return; }
+      // Guard: must have invite URL before opening modal
+      const baseUrl = state.inviteUrl || localStorage.getItem('if_invite_url') || '';
+      if (!baseUrl) {
+        showSendError('Invite page not ready yet — please wait a moment and try again.');
+        return;
+      }
       _phoneSentCount = 0;
       _phoneTotalCount = valid.length;
       const titleEl = document.getElementById('phoneSendTitle');
@@ -1795,13 +1806,15 @@
           : `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
         const btnClass = type === 'phone_sms' ? 'sms-btn' : 'wa-btn';
         const btnLabel = type === 'phone_sms' ? '📱 Send SMS' : '💬 WhatsApp';
+        // sms: uses _self (avoids phantom blank tab on iOS); wa.me uses _blank (stays in browser)
+        const target = type === 'phone_sms' ? '_self' : '_blank';
         return `<div class="phone-guest-row" id="pgrow-${i}">
           <div class="phone-guest-info">
             <div class="gname">${g.name}</div>
             <div class="gnum">${g.number}</div>
           </div>
           <a href="${href}" class="phone-send-btn ${btnClass}" id="pgbtn-${i}"
-            onclick="markPhoneGuestSent(${i})" target="_blank">${btnLabel}</a>
+            onclick="markPhoneGuestSent(${i})" target="${target}">${btnLabel}</a>
         </div>`;
       }).join('');
       document.getElementById('phoneSendModal').style.display = 'block';
