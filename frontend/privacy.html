@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — InviteForge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: #0a0e1a;
+      color: #f8f6f0;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background-color: rgba(10, 14, 26, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(201, 169, 110, 0.2);
+      padding: 0 2rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #c9a96e;
+      text-decoration: none;
+      letter-spacing: 0.02em;
+    }
+
+    .back-link {
+      font-size: 0.875rem;
+      color: #c9a96e;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 500;
+      transition: opacity 0.2s ease;
+    }
+
+    .back-link:hover {
+      opacity: 0.75;
+    }
+
+    /* ── Main content ────────────────────────────────── */
+    main {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 4rem 2rem 6rem;
+    }
+
+    .page-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      font-weight: 700;
+      color: #c9a96e;
+      margin-bottom: 0.5rem;
+      line-height: 1.2;
+    }
+
+    .effective-date {
+      font-size: 0.875rem;
+      color: rgba(248, 246, 240, 0.5);
+      margin-bottom: 3rem;
+      font-style: italic;
+    }
+
+    .intro {
+      font-size: 1.05rem;
+      color: rgba(248, 246, 240, 0.85);
+      margin-bottom: 3rem;
+      padding: 1.5rem;
+      border-left: 3px solid #c9a96e;
+      background: rgba(201, 169, 110, 0.05);
+      border-radius: 0 6px 6px 0;
+    }
+
+    section {
+      margin-bottom: 3rem;
+    }
+
+    h2 {
+      font-family: 'Inter', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #c9a96e;
+      margin-bottom: 1rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid rgba(201, 169, 110, 0.2);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    p {
+      color: rgba(248, 246, 240, 0.85);
+      margin-bottom: 1rem;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    ul, ol {
+      color: rgba(248, 246, 240, 0.85);
+      padding-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    li {
+      margin-bottom: 0.5rem;
+    }
+
+    li:last-child {
+      margin-bottom: 0;
+    }
+
+    strong {
+      color: #f8f6f0;
+      font-weight: 600;
+    }
+
+    a {
+      color: #c9a96e;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    a:hover {
+      opacity: 0.8;
+    }
+
+    .highlight-box {
+      background: rgba(201, 169, 110, 0.08);
+      border: 1px solid rgba(201, 169, 110, 0.25);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .highlight-box p {
+      margin-bottom: 0;
+    }
+
+    /* ── Footer ──────────────────────────────────────── */
+    footer {
+      background: rgba(0, 0, 0, 0.3);
+      border-top: 1px solid rgba(201, 169, 110, 0.15);
+      padding: 1.5rem 2rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: rgba(248, 246, 240, 0.45);
+    }
+
+    footer a {
+      color: rgba(201, 169, 110, 0.7);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      color: #c9a96e;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+
+    @media (max-width: 600px) {
+      main {
+        padding: 2.5rem 1.25rem 4rem;
+      }
+
+      header {
+        padding: 0 1.25rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="/" class="logo">InviteForge</a>
+    <a href="/app/" class="back-link">← Back to App</a>
+  </header>
+
+  <main>
+    <h1 class="page-title">Privacy Policy</h1>
+    <p class="effective-date">Effective date: April 2026</p>
+
+    <div class="intro">
+      This Privacy Policy explains how InviteForge collects, uses, and protects personal data when you use our digital invitation and SMS delivery service. We are committed to being transparent and handling your data — and your guests' data — responsibly under UK GDPR and the Data Protection Act 2018.
+    </div>
+
+    <!-- 1. Who We Are -->
+    <section>
+      <h2>1. Who We Are</h2>
+      <p><strong>InviteForge</strong> operates the invitation platform at <a href="https://inviteforge.onrender.com">inviteforge.onrender.com</a>. We provide digital invitation creation and SMS delivery services for event hosts — including wedding planners, birthday organisers, corporate event managers, and private individuals.</p>
+      <p>For data protection purposes, InviteForge is the <strong>data controller</strong> for event host account data. Event hosts act as data controllers for their guests' personal data, and InviteForge acts as a <strong>data processor</strong> when processing guest phone numbers on the host's behalf.</p>
+      <p>To contact us about privacy matters: <a href="mailto:privacy@inviteforge.co.uk">privacy@inviteforge.co.uk</a></p>
+    </section>
+
+    <!-- 2. Data We Collect -->
+    <section>
+      <h2>2. What Data We Collect</h2>
+      <p>We collect only the personal data necessary to deliver our service:</p>
+
+      <p><strong>Event Host Data (collected via Stripe at checkout):</strong></p>
+      <ul>
+        <li>Full name and email address</li>
+        <li>Payment billing details (handled and stored by Stripe — we do not store card numbers)</li>
+        <li>Event details: event name, date, venue, and message content</li>
+      </ul>
+
+      <p><strong>Guest Data (provided by the event host):</strong></p>
+      <ul>
+        <li>Guest mobile phone numbers</li>
+        <li>Guest names (if provided by the host)</li>
+        <li>RSVP responses submitted by guests via the SMS link</li>
+      </ul>
+
+      <p><strong>Technical Data (collected automatically):</strong></p>
+      <ul>
+        <li>IP address and basic browser information (for security and fraud prevention)</li>
+        <li>Session data (to maintain your login state)</li>
+        <li>SMS delivery status logs (provided by Twilio)</li>
+      </ul>
+    </section>
+
+    <!-- 3. How We Use It -->
+    <section>
+      <h2>3. How We Use Your Data</h2>
+      <p>We use personal data for the following purposes:</p>
+      <ul>
+        <li><strong>Sending SMS invitations</strong> — guest phone numbers are passed to Twilio to deliver the invitation messages you have created</li>
+        <li><strong>Processing payments</strong> — host billing details are processed by Stripe to complete the transaction for your event</li>
+        <li><strong>Storing RSVP responses</strong> — guest replies are stored so you can view attendance confirmations through the app</li>
+        <li><strong>Customer support</strong> — if you contact us, we use your details to respond and resolve your query</li>
+        <li><strong>Service improvement</strong> — aggregated, anonymised data may be used to improve the platform (no individual is identifiable)</li>
+      </ul>
+
+      <p>Our lawful bases under UK GDPR are:</p>
+      <ul>
+        <li><strong>Contract performance</strong> — processing host data to deliver the paid service</li>
+        <li><strong>Legitimate interests</strong> — basic fraud prevention and platform security</li>
+        <li><strong>Consent (via the event host)</strong> — hosts are required to confirm they have guests' consent before uploading phone numbers</li>
+      </ul>
+    </section>
+
+    <!-- 4. Third Parties -->
+    <section>
+      <h2>4. Third Parties We Share Data With</h2>
+      <p>We never sell your data or your guests' data to third parties. We share data only with the following service providers, under data processing agreements, strictly to operate the platform:</p>
+
+      <ul>
+        <li>
+          <strong>Twilio Inc.</strong> — SMS delivery. Guest phone numbers are transmitted to Twilio's servers to send invitation messages. Twilio is GDPR-compliant and operates under Standard Contractual Clauses for international data transfers. <a href="https://www.twilio.com/en-us/legal/privacy" target="_blank" rel="noopener">Twilio Privacy Policy</a>
+        </li>
+        <li>
+          <strong>Stripe Inc.</strong> — Payment processing. Host payment details are processed by Stripe. InviteForge never stores card or bank details. <a href="https://stripe.com/gb/privacy" target="_blank" rel="noopener">Stripe Privacy Policy</a>
+        </li>
+        <li>
+          <strong>GitHub</strong> — Event data and RSVP responses may be stored in a private GitHub repository as part of our data layer. GitHub is GDPR-compliant. <a href="https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement" target="_blank" rel="noopener">GitHub Privacy Statement</a>
+        </li>
+        <li>
+          <strong>Render</strong> — Our application is hosted on Render's cloud infrastructure (US-based). Data in transit is encrypted via TLS. <a href="https://render.com/privacy" target="_blank" rel="noopener">Render Privacy Policy</a>
+        </li>
+        <li>
+          <strong>Google Fonts</strong> — We load fonts from Google Fonts CDN, which may log your IP address. No personal event data is shared with Google. <a href="https://developers.google.com/fonts/faq/privacy" target="_blank" rel="noopener">Google Fonts Privacy FAQ</a>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 5. Data Retention -->
+    <section>
+      <h2>5. Data Retention</h2>
+      <p>We retain data only as long as necessary:</p>
+      <ul>
+        <li><strong>Event data and guest phone numbers</strong> — kept for 90 days after the event date, then permanently deleted from all InviteForge systems</li>
+        <li><strong>RSVP responses</strong> — deleted alongside event data at the 90-day mark</li>
+        <li><strong>Payment records</strong> — Stripe retains payment records in accordance with their own retention policy and legal obligations (typically 7 years for financial compliance)</li>
+        <li><strong>Support correspondence</strong> — retained for 12 months, then deleted</li>
+      </ul>
+      <p>If you wish your data deleted earlier, please email <a href="mailto:privacy@inviteforge.co.uk">privacy@inviteforge.co.uk</a> and we will action your request within 30 days.</p>
+    </section>
+
+    <!-- 6. Cookies -->
+    <section>
+      <h2>6. Cookies</h2>
+      <p>We use only <strong>essential session cookies</strong> — small files stored in your browser to keep you logged in during your session. No tracking cookies, no advertising cookies, no analytics cookies are set by InviteForge.</p>
+      <p>Third-party services (Google Fonts, Stripe) may set their own cookies; please refer to their respective privacy policies for details.</p>
+      <p>You can block cookies in your browser settings. Blocking session cookies will prevent you from logging in to the app.</p>
+    </section>
+
+    <!-- 7. Guest Rights Under UK GDPR -->
+    <section>
+      <h2>7. Your Rights Under UK GDPR</h2>
+      <p>If you are an event host or a guest whose data has been processed through InviteForge, you have the following rights:</p>
+      <ul>
+        <li><strong>Right of access</strong> — you can request a copy of the personal data we hold about you</li>
+        <li><strong>Right to erasure</strong> — you can ask us to delete your personal data ("right to be forgotten")</li>
+        <li><strong>Right to portability</strong> — you can request your data in a machine-readable format</li>
+        <li><strong>Right to rectification</strong> — you can ask us to correct inaccurate data</li>
+        <li><strong>Right to restrict processing</strong> — you can ask us to pause processing your data in certain circumstances</li>
+        <li><strong>Right to object</strong> — you can object to processing based on legitimate interests</li>
+      </ul>
+      <p>To exercise any of these rights, email <a href="mailto:privacy@inviteforge.co.uk">privacy@inviteforge.co.uk</a>. We will respond within 30 days. We do not charge a fee for reasonable requests.</p>
+      <p>If you are unhappy with how we handle your data, you have the right to lodge a complaint with the <strong>UK Information Commissioner's Office (ICO)</strong>: <a href="https://ico.org.uk" target="_blank" rel="noopener">ico.org.uk</a></p>
+    </section>
+
+    <!-- 8. ICO Registration -->
+    <section>
+      <h2>8. ICO Registration</h2>
+      <div class="highlight-box">
+        <p>InviteForge is in the process of registering with the UK Information Commissioner's Office (ICO) as required under the Data Protection Act 2018. As a data controller processing personal data, we take this obligation seriously. Registration details will be published here once confirmed.</p>
+      </div>
+    </section>
+
+    <!-- 9. Data Security -->
+    <section>
+      <h2>9. Data Security</h2>
+      <p>We take reasonable technical and organisational measures to protect your data:</p>
+      <ul>
+        <li>All data in transit is encrypted using TLS (HTTPS)</li>
+        <li>Access to event data is restricted to authenticated users only</li>
+        <li>Guest phone numbers are transmitted to Twilio over encrypted channels</li>
+        <li>We do not store payment card details — Stripe handles all card data in their PCI-compliant environment</li>
+      </ul>
+      <p>No system is 100% secure. In the event of a data breach that is likely to result in risk to individuals, we will notify the ICO within 72 hours and affected users without undue delay.</p>
+    </section>
+
+    <!-- 10. International Transfers -->
+    <section>
+      <h2>10. International Data Transfers</h2>
+      <p>Some of our third-party providers (Twilio, Stripe, Render) are based in the United States. Data transfers to these providers are made under appropriate safeguards, including Standard Contractual Clauses (SCCs) approved by the UK ICO, ensuring your data receives equivalent protection to that required under UK GDPR.</p>
+    </section>
+
+    <!-- 11. Children -->
+    <section>
+      <h2>11. Children's Data</h2>
+      <p>InviteForge is not intended for use by individuals under the age of 18. We do not knowingly collect personal data from children. If you believe a child's data has been submitted to our platform without appropriate consent, please contact <a href="mailto:privacy@inviteforge.co.uk">privacy@inviteforge.co.uk</a> and we will delete it promptly.</p>
+    </section>
+
+    <!-- 12. Changes -->
+    <section>
+      <h2>12. Changes to This Policy</h2>
+      <p>We may update this Privacy Policy from time to time. When we make material changes, we will update the effective date at the top of this page and, where appropriate, notify active users by email. Your continued use of InviteForge after any changes constitutes acceptance of the updated policy.</p>
+    </section>
+
+    <!-- 13. Contact -->
+    <section>
+      <h2>13. Contact Us</h2>
+      <p>For any privacy-related questions, data subject requests, or concerns, please contact us:</p>
+      <ul>
+        <li>Email: <a href="mailto:privacy@inviteforge.co.uk">privacy@inviteforge.co.uk</a></li>
+        <li>Website: <a href="https://inviteforge.onrender.com">inviteforge.onrender.com</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2026 InviteForge</p>
+    <div class="footer-links">
+      <a href="/privacy.html">Privacy Policy</a>
+      <a href="/terms.html">Terms of Service</a>
+      <a href="mailto:support@inviteforge.co.uk">support@inviteforge.co.uk</a>
+    </div>
+  </footer>
+
+</body>
+</html>
