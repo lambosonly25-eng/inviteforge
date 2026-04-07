@@ -1234,10 +1234,12 @@
           headers:{'Content-Type':'application/json',...(_jwt?{'Authorization':'Bearer '+_jwt}:{})},
           body:JSON.stringify({event_id:state.eventId,auth_token:state.authToken,guests:guestPayload})
         }).catch(()=>{});
-        // Reload iframe with existing URL
-        const iframeSrc = state.inviteUrl + '?name=' + encodeURIComponent(sampleName);
-        document.getElementById('inviteFrame').src = iframeSrc;
-        document.getElementById('inviteOpenBtn').href = iframeSrc;
+        // Reload iframe with existing URL (only if we have one)
+        if (state.inviteUrl) {
+          const iframeSrc = state.inviteUrl + '?name=' + encodeURIComponent(sampleName);
+          document.getElementById('inviteFrame').src = iframeSrc;
+          document.getElementById('inviteOpenBtn').href = iframeSrc;
+        }
         document.getElementById('inviteCreating').style.display = 'none';
         document.getElementById('invitePreviewWrap').style.display = 'block';
         const sender = document.getElementById('senderName').value || 'InviteForge';
@@ -1285,7 +1287,7 @@
         const data = await res.json();
         result.innerHTML = data.success
           ? '<span style="color:var(--green)">✅ Test sent! Check your phone.</span>'
-          : `<span style="color:var(--red)">❌ ${data.error}</span>`;
+          : `<span style="color:var(--red)">❌ ${esc(data.error)}</span>`;
       } catch(e) {
         result.innerHTML = '<span style="color:var(--red)">❌ Could not reach server. Is the backend running?</span>';
       }
@@ -1349,6 +1351,12 @@
               })
             });
             const data = await res.json();
+            if (!res.ok) {
+              btn.disabled = false;
+              selectSendMethod(state.sendMethod);
+              showSendError(data.detail || 'Could not start payment. Please try again.');
+              return;
+            }
             if (data.checkout_url) {
               sessionStorage.setItem('if_send_method', state.sendMethod);
               sessionStorage.setItem('if_guests', JSON.stringify(valid));
@@ -1359,6 +1367,7 @@
           } catch(e) {
             btn.disabled = false;
             selectSendMethod(state.sendMethod);
+            showSendError('Could not reach server. Is the backend running?');
             return;
           }
         } else {
@@ -1391,6 +1400,12 @@
             })
           });
           const data = await res.json();
+          if (!res.ok) {
+            btn.disabled = false;
+            btn.innerHTML = `🚀 Pay & Send — £${(50 + valid.length * 0.30).toFixed(2)}`;
+            showSendError(data.detail || 'Could not start payment. Please try again.');
+            return;
+          }
           if (data.checkout_url) {
             // Persist state before Stripe redirect — page will fully reload on return
             sessionStorage.setItem('if_guests', JSON.stringify(valid));
@@ -1428,14 +1443,14 @@
           const data = await res.json();
           if (data.success) {
             sent++; g.sendStatus = 'sent';
-            log.innerHTML += `<div class="log-line ok">✅ ${g.name} (${g.number})</div>`;
+            log.innerHTML += `<div class="log-line ok">✅ ${esc(g.name)} (${esc(g.number)})</div>`;
           } else {
             failed++; g.sendStatus = 'failed'; g.sendError = data.error;
-            log.innerHTML += `<div class="log-line err">❌ ${g.name} — ${data.error}</div>`;
+            log.innerHTML += `<div class="log-line err">❌ ${esc(g.name)} — ${esc(data.error)}</div>`;
           }
         } catch(e) {
           failed++; g.sendStatus = 'failed'; g.sendError = 'connection error';
-          log.innerHTML += `<div class="log-line err">❌ ${g.name} — connection error</div>`;
+          log.innerHTML += `<div class="log-line err">❌ ${esc(g.name)} — connection error</div>`;
         }
         const progress = Math.round(((i+1)/valid.length)*100);
         bar.style.width = progress + '%';
@@ -1852,6 +1867,7 @@
     // ── PHONE SEND MODAL ──
     let _phoneSentCount = 0;
     let _phoneTotalCount = 0;
+    let _phoneModalGuests = []; // tracks which guests are currently shown in the modal
 
     // Persist phone modal sent-set to sessionStorage so iOS page reload doesn't lose progress
     function _phoneGetSentSet() {
@@ -1881,6 +1897,8 @@
         showSendError('Invite page not ready yet — please wait a moment and try again.');
         return;
       }
+      // Track which guests are in this modal so phoneSendDone only marks them
+      _phoneModalGuests = valid;
       // Restore sent progress from sessionStorage (survives iOS app-switch reload)
       const sentSet = _phoneGetSentSet();
       _phoneSentCount = sentSet.size;
@@ -1950,8 +1968,9 @@
       _phoneClearSentSet();
       state.sentCount = _phoneSentCount;
       state.failedCount = _phoneTotalCount - _phoneSentCount;
-      // Mark all valid guests as sent via phone so dashboard shows "Via Phone" not "Queued"
-      state.guests.filter(g => g.valid).forEach(g => { if (!g.sendStatus || g.sendStatus === 'pending') g.sendStatus = 'phone'; });
+      // Mark only the guests that were shown in this modal instance (not all valid guests)
+      _phoneModalGuests.forEach(g => { if (!g.sendStatus || g.sendStatus === 'pending') g.sendStatus = 'phone'; });
+      _phoneModalGuests = [];
       goStep(6);
     }
 
@@ -2211,7 +2230,11 @@
       const row = document.getElementById('pgallery-' + photoId);
       if (row) { row.style.opacity = '0.4'; row.style.pointerEvents = 'none'; }
       try {
-        await fetch(`/api/event/${state.eventId}/gallery/${photoId}/${action}?token=${encodeURIComponent(tok)}`, {method:'POST', headers});
+        const res = await fetch(`/api/event/${state.eventId}/gallery/${photoId}/${action}?token=${encodeURIComponent(tok)}`, {method:'POST', headers});
+        if (!res.ok) {
+          if (row) { row.style.opacity = '1'; row.style.pointerEvents = 'auto'; }
+          return;
+        }
         await loadGallery(); // refresh
       } catch(e) {
         if (row) { row.style.opacity = '1'; row.style.pointerEvents = 'auto'; }
