@@ -482,7 +482,8 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
       <div class="hero-cta">
         <a href="#rsvp" class="btn-rsvp">RSVP Now</a>
         <a href="#details" class="btn-details">View Details</a>
-        <a id="calBtn" href="#" class="btn-details" style="display:none;" target="_blank" rel="noopener">📅 Add to Calendar</a>
+        <a id="calBtn" href="#" class="btn-details" style="display:none;" target="_blank" rel="noopener">📅 Google Calendar</a>
+        <a id="calBtnIcs" href="#" class="btn-details" style="display:none;" download="invite.ics">📅 Apple / Outlook</a>
       </div>
     </div>
     <div class="scroll-hint">↓</div>
@@ -547,7 +548,8 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
       <div class="rsvp-success" id="rsvpSuccess">
         <div class="rsvp-success-icon">💌</div>
         <h3>RSVP Received</h3>
-        <p>Thank you so much. Your response has been noted and the host has been notified.</p>
+        <p>Thank you! Your response has been sent and the host has been notified. We look forward to seeing you.</p>
+        <p style="margin-top:12px;font-size:13px;opacity:0.6;">You can close this page — your RSVP is saved.</p>
       </div>
     </div>
   </section>
@@ -565,7 +567,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
       document.getElementById('rsvpName').value = guestName;
     }}
 
-    // Build Google Calendar link
+    // Build calendar links (Google + Apple/iCal)
     (function() {{
       const rawDate = '{RAW_DATE}';
       const rawTime = '{RAW_TIME}';
@@ -582,12 +584,27 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
           start = d + 'T' + startH + startM + '00';
           end   = d + 'T' + endH   + startM + '00';
         }}
-        const cal = 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+        const googleCal = 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
           '&text=' + encodeURIComponent(eventName) +
           '&dates=' + start + '/' + end +
           (venue ? '&location=' + encodeURIComponent(venue) : '');
         const btn = document.getElementById('calBtn');
-        if (btn) {{ btn.href = cal; btn.style.display = 'inline-block'; }}
+        if (btn) {{ btn.href = googleCal; btn.style.display = 'inline-block'; }}
+        // Apple Calendar / Outlook: generate .ics data URI
+        const icsLines = [
+          'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//InviteForge//EN',
+          'BEGIN:VEVENT',
+          'DTSTART:' + start,
+          'DTEND:' + end,
+          'SUMMARY:' + eventName.replace(/,/g, '\\,'),
+          venue ? ('LOCATION:' + venue.replace(/,/g, '\\,')) : '',
+          'END:VEVENT','END:VCALENDAR'
+        ].filter(Boolean).join('\r\n');
+        const icsBtn = document.getElementById('calBtnIcs');
+        if (icsBtn) {{
+          icsBtn.href = 'data:text/calendar;charset=utf8,' + encodeURIComponent(icsLines);
+          icsBtn.style.display = 'inline-block';
+        }}
       }} catch(e) {{}}
     }})();
 
