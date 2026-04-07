@@ -339,9 +339,29 @@
         <div class="step-lbl">Live</div>
       </div>
     </div>
-    <a href="/login" style="font-size:13px;color:var(--grey);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#c9a96e'" onmouseout="this.style.color='#9ca3af'">Sign in ↗</a>
+    <div id="headerAuth" style="display:flex;align-items:center;gap:12px;">
+      <!-- Populated by initAuthHeader() on page load -->
+      <a href="/login" style="font-size:13px;color:var(--grey);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#c9a96e'" onmouseout="this.style.color='#9ca3af'">Sign in ↗</a>
+    </div>
     <div style="font-size:13px;color:var(--grey);">Step <span id="stepLabel">1</span> of 6</div>
   </header>
+
+  <!-- MY EVENTS MODAL -->
+  <div id="myEventsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;overflow-y:auto;padding:20px;">
+    <div style="max-width:560px;margin:40px auto;background:#111827;border:1px solid rgba(255,255,255,0.08);border-radius:20px;overflow:hidden;">
+      <div style="padding:24px 28px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-family:'Playfair Display',serif;font-size:22px;color:#f8f6f0;">My Events</div>
+        <button onclick="document.getElementById('myEventsModal').style.display='none'" style="background:none;border:none;color:#9ca3af;font-size:22px;cursor:pointer;padding:4px;">✕</button>
+      </div>
+      <div id="myEventsList" style="padding:20px 28px;min-height:80px;">
+        <div style="color:#9ca3af;text-align:center;padding:20px;">Loading…</div>
+      </div>
+      <div style="padding:16px 28px;border-top:1px solid rgba(255,255,255,0.08);display:flex;gap:12px;">
+        <button onclick="document.getElementById('myEventsModal').style.display='none';startNewEvent();" style="flex:1;padding:12px;background:rgba(201,169,110,0.1);border:1px solid rgba(201,169,110,0.3);color:#c9a96e;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;">✨ Create New Event</button>
+        <button onclick="doLogout()" style="padding:12px 18px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;">Sign Out</button>
+      </div>
+    </div>
+  </div>
 
   <div class="app-body">
     <main class="app-main">
@@ -1115,9 +1135,10 @@
         try {
           document.getElementById('inviteCreating').style.display = 'block';
           document.getElementById('invitePreviewWrap').style.display = 'none';
+          const _jwt = localStorage.getItem('if_jwt') || '';
           const res = await fetch('/api/events', {
             method: 'POST',
-            headers: {'Content-Type':'application/json'},
+            headers: {'Content-Type':'application/json', ...(_jwt ? {'Authorization': 'Bearer ' + _jwt} : {})},
             body: JSON.stringify({
               name: document.getElementById('eventName').value || 'Your Event',
               type: document.getElementById('eventType').value || '',
@@ -1130,6 +1151,7 @@
               message: document.getElementById('messageText').value || '',
               sender: document.getElementById('senderName').value || 'InviteForge',
               media_url: state.mediaUrl || '',
+              guests: state.guests.filter(g => g.valid).map(g => ({name: g.name, number: g.number})),
             })
           });
           const data = await res.json();
@@ -1438,7 +1460,10 @@
     async function loadDashboardRsvps() {
       if (!state.eventId) return;
       try {
-        const res = await fetch(`/api/event/${state.eventId}/rsvps`);
+        const _rsvpJwt = localStorage.getItem('if_jwt') || '';
+        const _rsvpToken = state.authToken || localStorage.getItem('if_auth_token') || '';
+        const _rsvpHeaders = _rsvpJwt ? {'Authorization': 'Bearer ' + _rsvpJwt} : {};
+        const res = await fetch(`/api/event/${state.eventId}/rsvps?token=${encodeURIComponent(_rsvpToken)}`, {headers: _rsvpHeaders});
         const data = await res.json();
         // Build lookup: guest_name → rsvp data
         const rsvpMap = {};
@@ -1940,6 +1965,113 @@
       updateMessagePreview();
       updatePreview();
     });
+
+    // ── AUTH HEADER & MY EVENTS ──
+    function initAuthHeader() {
+      const jwt = localStorage.getItem('if_jwt');
+      const container = document.getElementById('headerAuth');
+      if (!container) return;
+      container.textContent = '';
+      if (jwt) {
+        const btn = document.createElement('button');
+        btn.textContent = 'My Events ▾';
+        btn.style.cssText = 'font-size:13px;color:#c9a96e;background:rgba(201,169,110,0.1);border:1px solid rgba(201,169,110,0.3);padding:6px 14px;border-radius:100px;cursor:pointer;font-family:Inter,sans-serif;font-weight:600;';
+        btn.onclick = openMyEvents;
+        container.appendChild(btn);
+      } else {
+        const a = document.createElement('a');
+        a.href = '/login';
+        a.textContent = 'Sign in ↗';
+        a.style.cssText = 'font-size:13px;color:#9ca3af;text-decoration:none;';
+        a.onmouseover = () => { a.style.color = '#c9a96e'; };
+        a.onmouseout  = () => { a.style.color = '#9ca3af'; };
+        container.appendChild(a);
+      }
+    }
+
+    function doLogout() {
+      localStorage.removeItem('if_jwt');
+      document.getElementById('myEventsModal').style.display = 'none';
+      initAuthHeader();
+    }
+
+    function _makeStatusEl(msg, color) {
+      const d = document.createElement('div');
+      d.textContent = msg;
+      d.style.cssText = 'color:' + color + ';text-align:center;padding:20px;';
+      return d;
+    }
+
+    async function openMyEvents() {
+      document.getElementById('myEventsModal').style.display = 'block';
+      const listEl = document.getElementById('myEventsList');
+      listEl.textContent = '';
+      listEl.appendChild(_makeStatusEl('Loading\u2026', '#9ca3af'));
+      const jwt = localStorage.getItem('if_jwt');
+      if (!jwt) {
+        listEl.textContent = '';
+        listEl.appendChild(_makeStatusEl('Not logged in.', '#9ca3af'));
+        return;
+      }
+      try {
+        const res = await fetch('/api/user/events', { headers: {'Authorization': 'Bearer ' + jwt} });
+        if (res.status === 401) { doLogout(); return; }
+        const data = await res.json();
+        const events = data.events || [];
+        listEl.textContent = '';
+        if (!events.length) {
+          listEl.appendChild(_makeStatusEl('No events yet. Create your first one below.', '#9ca3af'));
+          return;
+        }
+        events.forEach(function(ev) {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.06);gap:12px;';
+          const info = document.createElement('div');
+          const nameEl = document.createElement('div');
+          nameEl.textContent = ev.name || 'Unnamed Event';
+          nameEl.style.cssText = 'font-weight:600;color:#f8f6f0;font-size:15px;';
+          const detailEl = document.createElement('div');
+          const parts = [ev.date || '', ev.venue ? '\u00b7 ' + ev.venue : ''].filter(Boolean);
+          detailEl.textContent = parts.join(' ');
+          detailEl.style.cssText = 'font-size:12px;color:#9ca3af;margin-top:3px;';
+          info.appendChild(nameEl);
+          info.appendChild(detailEl);
+          const viewBtn = document.createElement('button');
+          viewBtn.textContent = '\uD83D\uDCCA Dashboard';
+          viewBtn.style.cssText = 'font-size:12px;padding:7px 12px;background:rgba(201,169,110,0.1);border:1px solid rgba(201,169,110,0.3);color:#c9a96e;border-radius:8px;cursor:pointer;font-family:Inter,sans-serif;font-weight:600;white-space:nowrap;flex-shrink:0;';
+          viewBtn.onclick = function() { loadEventDashboard(ev); };
+          row.appendChild(info);
+          row.appendChild(viewBtn);
+          listEl.appendChild(row);
+        });
+      } catch(e) {
+        listEl.textContent = '';
+        listEl.appendChild(_makeStatusEl('Could not load events.', '#f87171'));
+      }
+    }
+
+    function loadEventDashboard(ev) {
+      document.getElementById('myEventsModal').style.display = 'none';
+      state.eventId   = ev.event_id || ev.id || '';
+      state.inviteUrl = ev.invite_url || '';
+      state.authToken = ev.auth_token || '';
+      state.eventName = ev.name || '';
+      if (ev.guests && Array.isArray(ev.guests) && ev.guests.length > 0) {
+        state.guests = ev.guests.map(function(g) { return Object.assign({}, g, {valid: true, sendStatus: 'sent'}); });
+      }
+      if (state.eventId) {
+        sessionStorage.setItem('if_event_id', state.eventId);
+        sessionStorage.setItem('if_invite_url', state.inviteUrl);
+        sessionStorage.setItem('if_auth_token', state.authToken);
+        localStorage.setItem('if_event_id', state.eventId);
+        localStorage.setItem('if_invite_url', state.inviteUrl);
+        localStorage.setItem('if_auth_token', state.authToken);
+        localStorage.setItem('if_event_name', state.eventName);
+      }
+      goStep(6);
+    }
+
+    initAuthHeader();
   </script>
 
   <!-- PHONE SEND MODAL -->
