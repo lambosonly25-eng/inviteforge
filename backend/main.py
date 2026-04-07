@@ -900,10 +900,11 @@ def build_invite_page(event: dict, event_id: str) -> str:
     hero_gradient = template_gradients.get(template, template_gradients["luxury"])
 
     media_url = event.get("media_url", "")
+    media_url_e = html.escape(media_url, quote=True)
     if media_url and re.search(r'\.(mp4|mov|webm)$', media_url, re.I):
-        hero_media = f'<video autoplay muted loop playsinline><source src="{media_url}"></video>'
+        hero_media = f'<video autoplay muted loop playsinline><source src="{media_url_e}"></video>'
     elif media_url:
-        hero_media = f'<img src="{media_url}" alt="Event"/>'
+        hero_media = f'<img src="{media_url_e}" alt="Event"/>'
     else:
         hero_media = ""
 
@@ -1500,23 +1501,36 @@ async def stripe_webhook(request: Request):
                 if auth_token:
                     send_magic_link_email(ev, event_id, auth_token)
             else:
-                # Twilio auto-send: fire SMS blast (idempotent)
+                # Twilio auto-send: fire SMS blast (idempotent — flag set first to prevent double-fire)
                 pending = ev.get("pending_send", {})
                 if pending and not ev.get("pending_send_fired"):
                     events[event_id]["pending_send_fired"] = True
                     save_events(events)
-                    await fire_sms_blast(
-                        guests=pending.get("guests", []),
-                        message=pending.get("message", ""),
-                        sender=pending.get("sender", "InviteForge"),
-                        event_id=event_id,
-                    )
-                    # Send magic link email post-payment — "your invites are flying out"
-                    events_fresh = load_events()
-                    ev_fresh = events_fresh.get(event_id, {})
-                    auth_token = ev_fresh.get("auth_token", "")
-                    if auth_token:
-                        send_magic_link_email(ev_fresh, event_id, auth_token)
+                    try:
+                        await fire_sms_blast(
+                            guests=pending.get("guests", []),
+                            message=pending.get("message", ""),
+                            sender=pending.get("sender", "InviteForge"),
+                            event_id=event_id,
+                        )
+                        # Send magic link email post-payment — "your invites are flying out"
+                        events_fresh = load_events()
+                        ev_fresh = events_fresh.get(event_id, {})
+                        auth_token = ev_fresh.get("auth_token", "")
+                        if auth_token:
+                            send_magic_link_email(ev_fresh, event_id, auth_token)
+                    except Exception as blast_err:
+                        print(f"[CRITICAL] fire_sms_blast failed for event {event_id}: {blast_err}")
+                        host_email = ev.get("host_email", "")
+                        if host_email:
+                            send_email(
+                                host_email,
+                                "Action required — invites failed to send",
+                                f'<div style="font-family:Arial,sans-serif;padding:24px;max-width:500px;">'
+                                f'<p style="font-size:16px;">Your payment was processed successfully, but there was a technical error sending your SMS invitations.</p>'
+                                f'<p>Please reply to this email or contact us — we will resolve it immediately. Quote event ID: <strong>{html.escape(event_id)}</strong></p>'
+                                f'</div>'
+                            )
 
     return {"received": True}
 
