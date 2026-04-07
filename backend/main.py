@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form, Dep
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field as _Field
 from typing import Optional
 import os, json, uuid, re, asyncio, shutil, html, time
 from datetime import datetime, timedelta
@@ -199,8 +199,6 @@ class EventCreateRequest(BaseModel):
     sender: str = "InviteForge"
     media_url: str = ""
     guests: list = []  # [{name, number}] — stored server-side for account isolation
-
-from pydantic import Field as _Field
 
 class RSVPRequest(BaseModel):
     guest_name: str  = _Field("",  max_length=100)
