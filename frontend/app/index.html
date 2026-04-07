@@ -1155,7 +1155,11 @@
     }
 
     // ── SUMMARY + EVENT CREATION + INVITE PREVIEW ──
+    let _summaryInProgress = false;
     async function updateSummary() {
+      if (_summaryInProgress) return;
+      _summaryInProgress = true;
+      try {
       const valid = state.guests.filter(g => g.valid).length;
       document.getElementById('sumEvent').textContent = document.getElementById('eventName').value || '—';
       document.getElementById('sumDate').textContent = document.getElementById('eventDate').value || '—';
@@ -1306,6 +1310,9 @@
         const smsPreview = msgWithUrl.replace('[Name]', sampleName).substring(0, 160);
         document.getElementById('smsPrevSender').textContent = sender;
         document.getElementById('smsPrevBody').textContent = smsPreview + (msgWithUrl.length > 160 ? '...' : '');
+      }
+      } finally {
+        _summaryInProgress = false;
       }
     }
 
