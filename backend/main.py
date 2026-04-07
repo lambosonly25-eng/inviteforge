@@ -670,7 +670,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
           'SUMMARY:' + eventName.replace(/,/g, '\\,'),
           venue ? ('LOCATION:' + venue.replace(/,/g, '\\,')) : '',
           'END:VEVENT','END:VCALENDAR'
-        ].filter(Boolean).join('\r\n');
+        ].filter(Boolean).join('\\r\\n');
         const icsBtn = document.getElementById('calBtnIcs');
         if (icsBtn) {{
           icsBtn.href = 'data:text/calendar;charset=utf8,' + encodeURIComponent(icsLines);
