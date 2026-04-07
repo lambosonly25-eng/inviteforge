@@ -631,6 +631,8 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
         msgEl.textContent = msgEl.textContent.replace(/\[Name\]/gi, guestName);
       }}
     }}
+    // Default attending to "yes" so guests don't have to tap before submitting
+    selectAttending('yes');
 
     // Build calendar links (Google + Apple/iCal)
     (function() {{
@@ -724,6 +726,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
         document.getElementById('rsvpSubmitBtn').before(err);
       }}
       err.textContent = '\u26a0\ufe0f ' + msg;
+      err.scrollIntoView({{behavior:'smooth', block:'center'}});
     }}
 
     // ── GALLERY ──
