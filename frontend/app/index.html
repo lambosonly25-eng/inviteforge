@@ -674,7 +674,9 @@
           <button onclick="copyInviteLink()" style="flex-shrink:0;padding:8px 16px;background:rgba(201,169,110,0.15);border:1px solid rgba(201,169,110,0.4);color:var(--gold);border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;" id="copyLinkBtn">📋 Copy Link</button>
         </div>
         <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-          <button onclick="sendReminders()" style="padding:10px 20px;background:rgba(201,169,110,0.1);border:1px solid rgba(201,169,110,0.3);color:var(--gold);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">🔔 Send Reminders to Non-Responders</button>
+          <button onclick="openAddMoreGuests()" style="padding:10px 20px;background:rgba(201,169,110,0.12);border:1px solid rgba(201,169,110,0.4);color:var(--gold);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">➕ Add More Guests</button>
+          <button onclick="sendReminders('phone_sms')" style="padding:10px 20px;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--white);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">🔔 Remind via SMS</button>
+          <button onclick="sendReminders('phone_whatsapp')" style="padding:10px 20px;background:rgba(37,211,102,0.08);border:1px solid rgba(37,211,102,0.3);color:#25D366;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">🔔 Remind via WhatsApp</button>
           <button onclick="exportCSV()" style="padding:10px 20px;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--white);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">📥 Export CSV</button>
           <button onclick="startNewEvent()" style="padding:10px 20px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);color:var(--green);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">✨ New Event</button>
           <button onclick="resendDashboardLink(this)" style="padding:10px 20px;background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--grey);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">📧 Resend My Dashboard Link</button>
@@ -1644,34 +1646,68 @@
       }).join('');
     }
 
-    async function sendReminders() {
+    function sendReminders(type) {
       const nonResponders = state.guests.filter(g => g.valid && !g.rsvpReceived);
-      if (!nonResponders.length) { alert('Everyone has responded!'); return; }
-      if (!confirm(`Send a reminder to ${nonResponders.length} guests who haven't responded yet?`)) return;
+      if (!nonResponders.length) { alert('Everyone has responded — no reminders needed!'); return; }
+      openPhoneSendModal(type, nonResponders);
+    }
 
-      // If customer used phone send, open the phone modal with non-responders only
-      if (state.sendMethod === 'phone_sms' || state.sendMethod === 'phone_whatsapp') {
-        openPhoneSendModal(state.sendMethod, nonResponders);
-        return;
-      }
+    function openAddMoreGuests() {
+      document.getElementById('addGuestsPaste').value = '';
+      document.getElementById('addGuestsPreview').textContent = '';
+      document.getElementById('addGuestsError').style.display = 'none';
+      document.getElementById('addGuestsModal').style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    }
 
-      // Twilio path
-      const sender = document.getElementById('senderName')?.value || document.getElementById('eventName')?.value?.replace(/\s+/g,'').substring(0,11) || 'InviteForge';
-      let sent = 0;
-      for (const g of nonResponders) {
-        const eventName = state.eventName || document.getElementById('eventName')?.value || 'our event';
-        const reminderMsg = `Hi ${g.name}, just a friendly reminder to RSVP for ${eventName} — we'd love to hear from you! ${state.inviteUrl}?name=${encodeURIComponent(g.name)}`;
+    function closeAddMoreGuests() {
+      document.getElementById('addGuestsModal').style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    function previewAddMoreGuests() {
+      const text = document.getElementById('addGuestsPaste').value.trim();
+      if (!text) { document.getElementById('addGuestsPreview').textContent = ''; return; }
+      const lines = text.split('\n').filter(l => l.trim());
+      const parsed = lines.map(l => {
+        const parts = l.split(/,|\t/).map(c => c.trim());
+        return normaliseGuest(parts[0], parts[1]);
+      }).filter(Boolean);
+      const valid = parsed.filter(g => g.valid).length;
+      document.getElementById('addGuestsPreview').textContent = `${parsed.length} guests parsed — ${valid} ready to send`;
+    }
+
+    async function sendAddedGuests(type) {
+      const text = document.getElementById('addGuestsPaste').value.trim();
+      const errEl = document.getElementById('addGuestsError');
+      errEl.style.display = 'none';
+      if (!text) { errEl.textContent = 'Please enter at least one guest.'; errEl.style.display = 'block'; return; }
+      const lines = text.split('\n').filter(l => l.trim());
+      const newGuests = lines.map(l => {
+        const parts = l.split(/,|\t/).map(c => c.trim());
+        return normaliseGuest(parts[0], parts[1]);
+      }).filter(Boolean);
+      const validNew = newGuests.filter(g => g.valid);
+      if (!validNew.length) { errEl.textContent = 'No valid guests found. Check names and numbers.'; errEl.style.display = 'block'; return; }
+
+      // Add to state and save to backend
+      newGuests.forEach(g => { state.guests.push(g); });
+      if (state.eventId) {
+        const jwt = localStorage.getItem('if_jwt') || '';
+        const token = state.authToken || localStorage.getItem('if_auth_token') || '';
+        const headers = {'Content-Type':'application/json'};
+        if (jwt) headers['Authorization'] = 'Bearer ' + jwt;
         try {
-          const res = await fetch('/api/send-invite', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ name: g.name, number: g.number, message: reminderMsg, sender })
+          await fetch(`/api/event/${state.eventId}/guests`, {
+            method: 'POST', headers,
+            body: JSON.stringify({ guests: state.guests.filter(g=>g.valid).map(g=>({name:g.name,number:g.number})), token })
           });
-          const data = await res.json();
-          if (data.success) sent++;
         } catch(e) {}
-        await new Promise(r => setTimeout(r, 300));
       }
-      alert(`Reminders sent to ${sent} guests.`);
+
+      closeAddMoreGuests();
+      loadDashboardRsvps();
+      openPhoneSendModal(type, validNew);
     }
 
     function exportCSV() {
@@ -2305,6 +2341,24 @@
     }
 
   </script>
+
+  <!-- ADD MORE GUESTS MODAL -->
+  <div id="addGuestsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9000;overflow-y:auto;padding:20px;box-sizing:border-box;">
+    <div style="max-width:480px;margin:40px auto;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div style="font-family:'Playfair Display',serif;font-size:20px;color:var(--white);">Add More Guests</div>
+        <button onclick="closeAddMoreGuests()" style="background:none;border:1px solid var(--border);color:var(--grey);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:16px;">✕</button>
+      </div>
+      <div style="font-size:13px;color:var(--grey);margin-bottom:14px;">Add new guests below — one per line, name and number separated by a comma.</div>
+      <textarea id="addGuestsPaste" rows="6" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;color:var(--white);font-size:14px;padding:12px;font-family:'Inter',sans-serif;resize:vertical;" placeholder="Sarah Jones, 07700 900 001&#10;Mark Smith, 07700 900 002" oninput="previewAddMoreGuests()"></textarea>
+      <div id="addGuestsPreview" style="margin-top:12px;font-size:13px;color:var(--grey);min-height:18px;"></div>
+      <div id="addGuestsError" style="display:none;color:#f87171;font-size:13px;margin-top:10px;padding:10px 14px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.3);border-radius:8px;"></div>
+      <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
+        <button onclick="sendAddedGuests('phone_sms')" style="flex:1;min-width:140px;padding:14px 16px;background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--white);border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;font-family:'Inter',sans-serif;">📱 Send via SMS</button>
+        <button onclick="sendAddedGuests('phone_whatsapp')" style="flex:1;min-width:140px;padding:14px 16px;background:rgba(37,211,102,0.08);border:1px solid rgba(37,211,102,0.3);color:#25D366;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;font-family:'Inter',sans-serif;">💬 Send via WhatsApp</button>
+      </div>
+    </div>
+  </div>
 
   <!-- PHONE SEND MODAL -->
   <div id="phoneSendModal">
