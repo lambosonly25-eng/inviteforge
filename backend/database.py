@@ -118,7 +118,7 @@ def load_from_gist():
             users = json.loads(uf["content"])
             for uid, udata in users.items():
                 conn.execute(
-                    "INSERT OR IGNORE INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)",
+                    "INSERT OR REPLACE INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)",
                     (uid, udata["email"], udata["password_hash"], udata.get("created_at", "")),
                 )
             conn.commit()
