@@ -688,6 +688,28 @@
             <tbody id="dashboardBody"></tbody>
           </table>
         </div>
+
+        <!-- PHOTO GALLERY PANEL -->
+        <div id="galleryPanel" style="display:none;margin-top:36px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+            <div style="font-family:'Playfair Display',serif;font-size:22px;color:var(--white);">Photo Gallery</div>
+            <div id="pendingPhotoBadge" style="display:none;background:#f59e0b;color:#0a0e1a;font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px;letter-spacing:0.5px;"></div>
+          </div>
+
+          <!-- PENDING SECTION -->
+          <div id="pendingPhotoSection" style="display:none;margin-bottom:28px;">
+            <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#f59e0b;margin-bottom:14px;">Awaiting Your Approval</div>
+            <div id="pendingPhotoGrid" style="display:flex;flex-direction:column;gap:12px;"></div>
+          </div>
+
+          <!-- APPROVED SECTION -->
+          <div id="approvedPhotoSection">
+            <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:14px;">Approved Gallery</div>
+            <div id="approvedPhotoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;"></div>
+            <div id="approvedPhotoEmpty" style="color:var(--grey);font-size:14px;padding:20px 0;">No approved photos yet. Guest photos you approve will appear here.</div>
+          </div>
+        </div>
+
       </div>
 
     </main>
@@ -1455,6 +1477,7 @@
       if (dashboardPollTimer) clearInterval(dashboardPollTimer);
       loadDashboardRsvps();
       dashboardPollTimer = setInterval(loadDashboardRsvps, 15000);
+      loadGallery();
     }
 
     async function loadDashboardRsvps() {
@@ -2069,6 +2092,122 @@
         localStorage.setItem('if_event_name', state.eventName);
       }
       goStep(6);
+    }
+
+    // ── GALLERY MANAGEMENT (host dashboard) ──
+    async function loadGallery() {
+      if (!state.eventId) return;
+      const jwt = localStorage.getItem('if_jwt') || '';
+      const tok = state.authToken || localStorage.getItem('if_auth_token') || '';
+      const headers = jwt ? {'Authorization': 'Bearer ' + jwt} : {};
+      try {
+        const res = await fetch(`/api/event/${state.eventId}/gallery?token=${encodeURIComponent(tok)}`, {headers});
+        if (!res.ok) return;
+        const data = await res.json();
+        renderGallery(data);
+        document.getElementById('galleryPanel').style.display = 'block';
+      } catch(e) {}
+    }
+
+    function renderGallery(data) {
+      const pending = data.pending || [];
+      const approved = data.approved || [];
+
+      // Pending badge
+      const badge = document.getElementById('pendingPhotoBadge');
+      if (pending.length > 0) {
+        badge.textContent = pending.length + ' awaiting approval';
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
+      }
+
+      // Pending section
+      const pendingSection = document.getElementById('pendingPhotoSection');
+      const pendingGrid = document.getElementById('pendingPhotoGrid');
+      pendingGrid.textContent = '';
+      if (pending.length > 0) {
+        pendingSection.style.display = 'block';
+        pending.forEach(function(p) {
+          const row = document.createElement('div');
+          row.id = 'pgallery-' + p.id;
+          row.style.cssText = 'display:flex;align-items:center;gap:14px;padding:12px 16px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:12px;flex-wrap:wrap;';
+          const img = document.createElement('img');
+          img.src = p.url;
+          img.alt = 'Photo by ' + p.submitted_by;
+          img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;flex-shrink:0;cursor:pointer;';
+          img.onclick = function() { window.open(p.url, '_blank'); };
+          const info = document.createElement('div');
+          info.style.cssText = 'flex:1;min-width:120px;';
+          const byEl = document.createElement('div');
+          byEl.textContent = p.submitted_by;
+          byEl.style.cssText = 'font-weight:600;color:#f8f6f0;font-size:15px;margin-bottom:3px;';
+          const dateEl = document.createElement('div');
+          try { dateEl.textContent = new Date(p.submitted_at).toLocaleDateString('en-GB', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); } catch(e) {}
+          dateEl.style.cssText = 'font-size:12px;color:#9ca3af;';
+          info.appendChild(byEl);
+          info.appendChild(dateEl);
+          const btnWrap = document.createElement('div');
+          btnWrap.style.cssText = 'display:flex;gap:8px;flex-shrink:0;';
+          const approveBtn = document.createElement('button');
+          approveBtn.textContent = '✓ Approve';
+          approveBtn.style.cssText = 'padding:9px 18px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.4);color:#22c55e;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;font-family:Inter,sans-serif;';
+          approveBtn.onclick = function() { galleryAction(p.id, 'approve'); };
+          const declineBtn = document.createElement('button');
+          declineBtn.textContent = '✕ Decline';
+          declineBtn.style.cssText = 'padding:9px 18px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;font-family:Inter,sans-serif;';
+          declineBtn.onclick = function() { galleryAction(p.id, 'decline'); };
+          btnWrap.appendChild(approveBtn);
+          btnWrap.appendChild(declineBtn);
+          row.appendChild(img);
+          row.appendChild(info);
+          row.appendChild(btnWrap);
+          pendingGrid.appendChild(row);
+        });
+      } else {
+        pendingSection.style.display = 'none';
+      }
+
+      // Approved section
+      const approvedGrid = document.getElementById('approvedPhotoGrid');
+      const approvedEmpty = document.getElementById('approvedPhotoEmpty');
+      approvedGrid.textContent = '';
+      if (approved.length > 0) {
+        approvedEmpty.style.display = 'none';
+        approved.forEach(function(p) {
+          const wrap = document.createElement('div');
+          wrap.style.cssText = 'position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;cursor:pointer;border:1px solid rgba(255,255,255,0.08);';
+          const img = document.createElement('img');
+          img.src = p.url;
+          img.alt = 'Photo by ' + p.submitted_by;
+          img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+          img.loading = 'lazy';
+          const cap = document.createElement('div');
+          cap.textContent = p.submitted_by;
+          cap.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);color:#f8f6f0;font-size:11px;padding:5px 8px;';
+          wrap.onclick = function() { window.open(p.url, '_blank'); };
+          wrap.appendChild(img);
+          wrap.appendChild(cap);
+          approvedGrid.appendChild(wrap);
+        });
+      } else {
+        approvedEmpty.style.display = 'block';
+      }
+    }
+
+    async function galleryAction(photoId, action) {
+      const tok = state.authToken || localStorage.getItem('if_auth_token') || '';
+      const jwt = localStorage.getItem('if_jwt') || '';
+      const headers = {'Content-Type': 'application/json', ...(jwt ? {'Authorization': 'Bearer ' + jwt} : {})};
+      // Immediately remove from UI for snappy feel
+      const row = document.getElementById('pgallery-' + photoId);
+      if (row) { row.style.opacity = '0.4'; row.style.pointerEvents = 'none'; }
+      try {
+        await fetch(`/api/event/${state.eventId}/gallery/${photoId}/${action}?token=${encodeURIComponent(tok)}`, {method:'POST', headers});
+        await loadGallery(); // refresh
+      } catch(e) {
+        if (row) { row.style.opacity = '1'; row.style.pointerEvents = 'auto'; }
+      }
     }
 
     initAuthHeader();
