@@ -523,6 +523,9 @@
           </div>
         </div>
 
+        <!-- Email confirmation -->
+        <div id="emailSentConfirm" style="display:none;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:8px;padding:10px 16px;margin-bottom:20px;font-size:13px;color:#4ade80;"></div>
+
         <!-- SMS PREVIEW -->
         <div style="margin-bottom:32px;">
           <div style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;">SMS Your Guests Will Receive</div>
@@ -709,12 +712,16 @@
       const name = document.getElementById('eventName').value.trim();
       const date = document.getElementById('eventDate').value.trim();
       const venue = document.getElementById('eventVenue').value.trim();
+      const email = document.getElementById('hostEmail').value.trim();
       const nav = document.querySelector('#step1 .step-nav');
       let err = document.getElementById('step1Error') || showStepError('step1Error', '');
       if (!nav.contains(err)) nav.insertBefore(err, nav.firstChild);
       if (!name) { err.textContent = '⚠️ Please enter your event name.'; err.style.display='block'; return; }
       if (!date) { err.textContent = '⚠️ Please enter the event date.'; err.style.display='block'; return; }
       if (!venue) { err.textContent = '⚠️ Please enter the venue.'; err.style.display='block'; return; }
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        err.textContent = '⚠️ Please enter a valid email address.'; err.style.display='block'; return;
+      }
       err.style.display = 'none';
       goStep(2);
     }
@@ -1088,6 +1095,18 @@
           document.getElementById('inviteCreating').style.display = 'none';
           document.getElementById('invitePreviewWrap').style.display = 'block';
 
+          // Show email confirmation if host email was provided
+          const hostEmailVal = document.getElementById('hostEmail')?.value?.trim();
+          const emailConfirmEl = document.getElementById('emailSentConfirm');
+          if (emailConfirmEl) {
+            if (hostEmailVal && data.auth_token) {
+              emailConfirmEl.textContent = `📧 Dashboard link sent to ${hostEmailVal}`;
+              emailConfirmEl.style.display = 'block';
+            } else {
+              emailConfirmEl.style.display = 'none';
+            }
+          }
+
           const sender = document.getElementById('senderName').value || 'InviteForge';
           const msg = document.getElementById('messageText').value || '';
           const msgWithUrl = msg.replace(/https?:\/\/\S+/g, data.invite_url) || msg + '\n' + data.invite_url;
@@ -1277,9 +1296,7 @@
     // ── DASHBOARD ──
     let dashboardPollTimer = null;
 
-    function buildDashboard() {
-      document.getElementById('dSent').textContent = state.sentCount != null ? state.sentCount : state.guests.filter(g=>g.valid).length;
-      document.getElementById('dFailed').textContent = state.failedCount != null ? state.failedCount : 0;
+    async function buildDashboard() {
       // Persist dashboard state to localStorage so user can return to it
       if (state.eventId) {
         localStorage.setItem('if_event_id', state.eventId);
@@ -1287,6 +1304,27 @@
         if (state.authToken) localStorage.setItem('if_auth_token', state.authToken);
         if (state.guests.length > 0) localStorage.setItem('if_guests_' + state.eventId, JSON.stringify(state.guests));
       }
+
+      // If we have no guest data (magic link return), fetch status from API
+      if (state.guests.filter(g=>g.valid).length === 0 && state.sentCount == null && state.eventId) {
+        try {
+          const statusRes = await fetch(`/api/event/${state.eventId}/status`);
+          if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            if (statusData.sent_count != null) state.sentCount = statusData.sent_count;
+            if (statusData.failed_count != null) state.failedCount = statusData.failed_count;
+            if (statusData.invite_url && !state.inviteUrl) {
+              state.inviteUrl = statusData.invite_url;
+              sessionStorage.setItem('if_invite_url', statusData.invite_url);
+              localStorage.setItem('if_invite_url', statusData.invite_url);
+            }
+          }
+        } catch(e) {}
+      }
+
+      document.getElementById('dSent').textContent = state.sentCount != null ? state.sentCount : state.guests.filter(g=>g.valid).length;
+      document.getElementById('dFailed').textContent = state.failedCount != null ? state.failedCount : 0;
+
       // Show invite link bar
       if (state.inviteUrl) {
         const bar = document.getElementById('dashInviteLink');
