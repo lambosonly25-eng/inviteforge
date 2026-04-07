@@ -103,6 +103,9 @@ def send_email(to: str, subject: str, html_body: str) -> bool:
         _req.urlopen(req, context=ctx, timeout=10)
         _email_last_error = ""
         return True
+    except _req.HTTPError as e:
+        _email_last_error = f"HTTP {e.code}: {e.read().decode()[:300]}"
+        return False
     except Exception as e:
         _email_last_error = str(e)[:200]
         return False
