@@ -82,10 +82,14 @@ def get_client_ip(request: Request) -> str:
     return forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
 
 # ── EMAIL ──
+_email_last_error: str = ""
+
 def send_email(to: str, subject: str, html_body: str) -> bool:
     """Send email via Resend API. Returns True on success."""
+    global _email_last_error
     api_key = os.getenv("RESEND_API_KEY", "") or RESEND_API_KEY
     if not api_key or not to:
+        _email_last_error = f"no_key={not api_key} no_to={not to}"
         return False
     import urllib.request as _req, ssl as _ssl
     body = json.dumps({"from": FROM_EMAIL, "to": [to], "subject": subject, "html": html_body}).encode()
@@ -93,10 +97,14 @@ def send_email(to: str, subject: str, html_body: str) -> bool:
                        headers={"Authorization": f"Bearer {api_key}",
                                 "Content-Type": "application/json"})
     try:
-        ctx = _ssl._create_unverified_context()
+        ctx = _ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = _ssl.CERT_NONE
         _req.urlopen(req, context=ctx, timeout=10)
+        _email_last_error = ""
         return True
-    except Exception:
+    except Exception as e:
+        _email_last_error = str(e)[:200]
         return False
 
 def build_magic_link_email(event: dict, event_id: str, auth_token: str) -> str:
@@ -1137,7 +1145,7 @@ async def resend_magic_link(event_id: str, request: Request):
     if not ev.get("host_email") or not auth_token:
         raise HTTPException(400, detail="No email address on file for this event.")
     ok = send_magic_link_email(ev, event_id, auth_token)
-    return {"success": ok}
+    return {"success": ok, "debug_error": _email_last_error if not ok else ""}
 
 
 @app.get("/api/event/{event_id}/status")
