@@ -84,12 +84,13 @@ def get_client_ip(request: Request) -> str:
 # ── EMAIL ──
 def send_email(to: str, subject: str, html_body: str) -> bool:
     """Send email via Resend API. Returns True on success."""
-    if not RESEND_API_KEY or not to:
+    api_key = os.getenv("RESEND_API_KEY", "") or RESEND_API_KEY
+    if not api_key or not to:
         return False
     import urllib.request as _req, ssl as _ssl
     body = json.dumps({"from": FROM_EMAIL, "to": [to], "subject": subject, "html": html_body}).encode()
     req = _req.Request("https://api.resend.com/emails", data=body, method="POST",
-                       headers={"Authorization": f"Bearer {RESEND_API_KEY}",
+                       headers={"Authorization": f"Bearer {api_key}",
                                 "Content-Type": "application/json"})
     try:
         ctx = _ssl._create_unverified_context()
