@@ -499,7 +499,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
     <div class="section-label">Your Personal Invitation</div>
     <div class="message-block">
       <div class="message-greeting" id="greeting">Dear Guest,</div>
-      <div class="message-body">{MESSAGE_BODY}</div>
+      <div class="message-body" id="inviteMessageBody">{MESSAGE_BODY}</div>
     </div>
   </section>
 
@@ -624,6 +624,11 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
     if (guestName) {{
       document.getElementById('greeting').textContent = 'Dear ' + guestName + ',';
       document.getElementById('rsvpName').value = guestName;
+      // Replace [Name] placeholder in the message body with the actual guest name
+      const msgEl = document.getElementById('inviteMessageBody');
+      if (msgEl) {{
+        msgEl.textContent = msgEl.textContent.replace(/\[Name\]/gi, guestName);
+      }}
     }}
 
     // Build calendar links (Google + Apple/iCal)
