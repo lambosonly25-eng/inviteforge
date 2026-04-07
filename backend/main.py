@@ -1120,15 +1120,34 @@ NOT_FOUND_PAGE = """<!DOCTYPE html>
 </html>"""
 
 @app.get("/invite/{event_id}", response_class=HTMLResponse)
-async def serve_invite(event_id: str):
-    events = load_events()
-    event = events.get(event_id)
-    if not event:
-        return HTMLResponse(NOT_FOUND_PAGE, status_code=404)
-    return HTMLResponse(
-        build_invite_page(event, event_id),
-        headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}
-    )
+async def serve_invite(event_id: str, name: str = ""):
+    try:
+        events = load_events()
+        event = events.get(event_id)
+        if not event:
+            return HTMLResponse(NOT_FOUND_PAGE, status_code=404)
+        return HTMLResponse(
+            build_invite_page(event, event_id),
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}
+        )
+    except Exception as _exc:
+        import traceback
+        print(f"[ERROR] serve_invite({event_id}): {_exc}\n{traceback.format_exc()}")
+        raise
+
+
+@app.get("/api/debug-invite/{event_id}")
+async def debug_invite(event_id: str):
+    try:
+        events = load_events()
+        event = events.get(event_id)
+        if not event:
+            return {"error": "event not found", "event_id": event_id, "total_events": len(events)}
+        html_out = build_invite_page(event, event_id)
+        return {"success": True, "html_length": len(html_out), "event_keys": list(event.keys())}
+    except Exception as exc:
+        import traceback
+        return {"error": str(exc), "traceback": traceback.format_exc()}
 
 
 @app.post("/api/upload-media")
