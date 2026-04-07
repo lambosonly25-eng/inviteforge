@@ -48,6 +48,8 @@ TWILIO_TOKEN         = os.getenv("TWILIO_TOKEN", "")
 STRIPE_SECRET_KEY    = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 PUBLIC_URL           = os.getenv("PUBLIC_URL", "").rstrip("/")
+RESEND_API_KEY       = os.getenv("RESEND_API_KEY", "")
+FROM_EMAIL           = os.getenv("FROM_EMAIL", "InviteForge <onboarding@resend.dev>")
 
 # Only load Stripe if keys are present
 stripe = None
@@ -77,6 +79,72 @@ def check_rate_limit(ip: str, max_calls: int, window_seconds: int) -> bool:
 def get_client_ip(request: Request) -> str:
     forwarded = request.headers.get("X-Forwarded-For", "")
     return forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
+
+# ── EMAIL ──
+def send_email(to: str, subject: str, html_body: str) -> bool:
+    """Send email via Resend API. Returns True on success."""
+    if not RESEND_API_KEY or not to:
+        return False
+    import urllib.request as _req, ssl as _ssl
+    body = json.dumps({"from": FROM_EMAIL, "to": [to], "subject": subject, "html": html_body}).encode()
+    req = _req.Request("https://api.resend.com/emails", data=body, method="POST",
+                       headers={"Authorization": f"Bearer {RESEND_API_KEY}",
+                                "Content-Type": "application/json"})
+    try:
+        ctx = _ssl._create_unverified_context()
+        _req.urlopen(req, context=ctx, timeout=10)
+        return True
+    except Exception:
+        return False
+
+def build_magic_link_email(event: dict, event_id: str, auth_token: str) -> str:
+    link = f"{PUBLIC_URL}/app/?event={event_id}&token={auth_token}"
+    event_name = html.escape(event.get("name", "Your Event"))
+    event_date = html.escape(event.get("date", ""))
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/>
+<style>
+  body{{font-family:'Helvetica Neue',Arial,sans-serif;background:#0a0e1a;color:#f8f6f0;margin:0;padding:40px 20px;}}
+  .card{{max-width:520px;margin:0 auto;background:#111827;border-radius:16px;overflow:hidden;border:1px solid rgba(201,169,110,0.2);}}
+  .header{{background:linear-gradient(160deg,#0a0e1a,#1e2d45);padding:40px 40px 32px;text-align:center;}}
+  .logo{{font-size:28px;font-weight:700;color:#c9a96e;letter-spacing:-0.5px;margin-bottom:8px;}}
+  .logo span{{color:#f8f6f0;}}
+  .body{{padding:40px;}}
+  h2{{font-size:22px;font-weight:700;color:#f8f6f0;margin:0 0 8px;}}
+  p{{font-size:15px;color:#9ca3af;line-height:1.7;margin:0 0 24px;}}
+  .event-box{{background:rgba(201,169,110,0.06);border:1px solid rgba(201,169,110,0.2);border-radius:10px;padding:16px 20px;margin-bottom:28px;}}
+  .event-name{{font-size:18px;font-weight:700;color:#c9a96e;margin-bottom:4px;}}
+  .event-date{{font-size:13px;color:#9ca3af;}}
+  .btn{{display:block;width:100%;padding:18px;background:#c9a96e;color:#0a0e1a;text-align:center;text-decoration:none;border-radius:10px;font-size:16px;font-weight:700;letter-spacing:0.5px;box-sizing:border-box;}}
+  .note{{font-size:12px;color:#6b7280;margin-top:24px;text-align:center;}}
+  .footer{{padding:24px 40px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;font-size:12px;color:#4b5563;}}
+</style></head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="logo">Invite<span>Forge</span></div>
+  </div>
+  <div class="body">
+    <h2>Your Dashboard is Ready</h2>
+    <p>Here's your personal link to track RSVPs and manage your event. Bookmark it — tap it any time to check in.</p>
+    <div class="event-box">
+      <div class="event-name">{event_name}</div>
+      {'<div class="event-date">📅 ' + event_date + '</div>' if event_date else ''}
+    </div>
+    <a href="{link}" class="btn">Open My Dashboard →</a>
+    <p class="note">This link is unique to you. Don't share it with guests.<br/>It gives full access to your RSVP dashboard.</p>
+  </div>
+  <div class="footer">InviteForge · Luxury Digital Invitations · <a href="{PUBLIC_URL}/privacy" style="color:#c9a96e;">Privacy</a></div>
+</div>
+</body></html>"""
+
+def send_magic_link_email(event: dict, event_id: str, auth_token: str) -> bool:
+    email = event.get("host_email", "")
+    if not email:
+        return False
+    subject = f"Your InviteForge Dashboard — {event.get('name', 'Your Event')}"
+    html_body = build_magic_link_email(event, event_id, auth_token)
+    return send_email(email, subject, html_body)
 
 # ── EVENT STORAGE ──
 EVENTS_FILE  = Path("events.json")
@@ -150,6 +218,7 @@ class EventCreateRequest(BaseModel):
     time: str = ""
     venue: str = ""
     rsvp_deadline: str = ""
+    host_email: str = ""
     template: str = "luxury"
     message: str = ""
     sender: str = "InviteForge"
@@ -638,6 +707,10 @@ def build_invite_page(event: dict, event_id: str) -> str:
 async def root():
     return FileResponse("../frontend/index.html")
 
+@app.get("/login")
+async def login_page():
+    return FileResponse("../frontend/login.html")
+
 @app.get("/privacy")
 async def privacy():
     return FileResponse("../frontend/privacy.html")
@@ -687,6 +760,7 @@ async def create_event(req: EventCreateRequest, request: Request):
         "time": req.time,
         "venue": req.venue,
         "rsvp_deadline": req.rsvp_deadline,
+        "host_email": req.host_email,
         "template": req.template,
         "message": req.message,
         "sender": req.sender,
@@ -697,6 +771,9 @@ async def create_event(req: EventCreateRequest, request: Request):
         "rsvps": [],
     }
     save_events(events)
+    # Send magic link email immediately so host can bookmark their dashboard
+    if req.host_email:
+        send_magic_link_email(events[event_id], event_id, auth_token)
     return {"event_id": event_id, "invite_url": invite_url, "auth_token": auth_token}
 
 
@@ -882,6 +959,12 @@ async def stripe_webhook(request: Request):
                     sender=pending.get("sender", "InviteForge"),
                     event_id=event_id,
                 )
+                # Send magic link email post-payment — "your invites are flying out"
+                events_fresh = load_events()
+                ev_fresh = events_fresh.get(event_id, {})
+                auth_token = ev_fresh.get("auth_token", "")
+                if auth_token:
+                    send_magic_link_email(ev_fresh, event_id, auth_token)
 
     return {"received": True}
 
@@ -935,6 +1018,50 @@ async def get_rsvps(event_id: str):
         "declined": len(declined),
         "total_guests": sum(r.get("guests_count", 1) for r in attending),
     }
+
+class LoginRequest(BaseModel):
+    email: str
+
+@app.post("/api/login")
+async def login(req: LoginRequest, request: Request):
+    """Find events by host email and send magic link(s)."""
+    ip = get_client_ip(request)
+    if not check_rate_limit(ip, max_calls=5, window_seconds=300):
+        raise HTTPException(429, detail="Too many login attempts. Please wait 5 minutes.")
+    email = req.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(400, detail="Invalid email address.")
+    events = load_events()
+    # Find all events belonging to this email
+    matched = [(eid, ev) for eid, ev in events.items()
+               if ev.get("host_email", "").strip().lower() == email]
+    if not matched:
+        # Return success anyway — don't reveal whether email exists
+        return {"success": True, "message": "If that email matches an event, a link is on its way."}
+    sent = 0
+    for event_id, ev in matched:
+        auth_token = ev.get("auth_token", "")
+        if auth_token and send_magic_link_email(ev, event_id, auth_token):
+            sent += 1
+    return {"success": True, "message": "If that email matches an event, a link is on its way.", "sent": sent}
+
+
+@app.post("/api/resend-link/{event_id}")
+async def resend_magic_link(event_id: str, request: Request):
+    """Re-send the magic link to the host of a given event."""
+    ip = get_client_ip(request)
+    if not check_rate_limit(ip, max_calls=3, window_seconds=300):
+        raise HTTPException(429, detail="Too many resend requests.")
+    events = load_events()
+    ev = events.get(event_id)
+    if not ev:
+        raise HTTPException(404, detail="Event not found")
+    auth_token = ev.get("auth_token", "")
+    if not ev.get("host_email") or not auth_token:
+        raise HTTPException(400, detail="No email address on file for this event.")
+    ok = send_magic_link_email(ev, event_id, auth_token)
+    return {"success": ok}
+
 
 @app.get("/api/event/{event_id}/status")
 async def get_event_status(event_id: str):
