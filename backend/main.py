@@ -228,6 +228,7 @@ class PhoneCheckoutRequest(BaseModel):
 def format_number(raw: str) -> Optional[str]:
     num = raw.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
     if num.startswith("+"): return num
+    if re.match(r'^44\d{10}$', num): return f"+{num}"          # 447712345678
     if num.startswith("39") and len(num) >= 12: return f"+{num}"
     if num.startswith("1") and len(num) == 11: return f"+{num}"
     if num.startswith("7") and len(num) == 10: return f"+44{num}"
@@ -244,6 +245,8 @@ def get_base_url(request: Request) -> str:
 
 async def fire_sms_blast(guests: list, message: str, sender: str, event_id: str):
     """Fire SMS to all valid guests. Used by both direct send and Stripe webhook."""
+    # Sanitise sender: Twilio alpha IDs max 11 chars, no spaces
+    sender = re.sub(r'\s+', '', sender or '')[:11] or 'InviteForge'
     client = twilio_client()
     results = []
     for guest in guests:
@@ -685,11 +688,21 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
         message: document.getElementById('rsvpMessage').value || '',
       }};
       try {{
-        await fetch('/api/rsvp/' + EVENT_ID, {{
+        const res = await fetch('/api/rsvp/' + EVENT_ID, {{
           method: 'POST', headers: {{'Content-Type': 'application/json'}},
           body: JSON.stringify(payload),
         }});
-      }} catch(e) {{}}
+        if (!res.ok) {{
+          const err = await res.json().catch(function() {{ return {{}}; }});
+          showRsvpError(err.detail || 'Something went wrong. Please try again.');
+          btn.disabled = false; btn.textContent = 'Send My RSVP';
+          return;
+        }}
+      }} catch(e) {{
+        showRsvpError('Could not connect. Please check your internet and try again.');
+        btn.disabled = false; btn.textContent = 'Send My RSVP';
+        return;
+      }}
       document.getElementById('rsvpForm').style.display = 'none';
       document.getElementById('rsvpSuccess').style.display = 'block';
     }}
@@ -839,6 +852,35 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
     }}
 
     loadApprovedGallery();
+
+    // Hide gallery upload section for upcoming events
+    (function() {{
+      var rawDate = '{RAW_DATE}';
+      if (!rawDate) return;
+      try {{
+        var eventDate = new Date(rawDate + 'T00:00:00');
+        var today = new Date(); today.setHours(0,0,0,0);
+        if (eventDate > today) {{
+          // Event hasn't happened yet — hide upload, only show gallery if photos exist
+          var gallerySection = document.getElementById('gallery');
+          fetch('/api/event/' + EVENT_ID + '/gallery')
+            .then(function(r) {{ return r.json(); }})
+            .then(function(d) {{
+              if ((d.approved || []).length === 0) {{
+                if (gallerySection) gallerySection.style.display = 'none';
+              }} else {{
+                var uploadForm = document.getElementById('galleryUploadForm');
+                if (uploadForm) uploadForm.style.display = 'none';
+                var uploadSuccess = document.getElementById('galleryUploadSuccess');
+                if (uploadSuccess) uploadSuccess.style.display = 'none';
+              }}
+            }})
+            .catch(function() {{
+              if (gallerySection) gallerySection.style.display = 'none';
+            }});
+        }}
+      }} catch(e) {{}}
+    }})();
   </script>
 </body>
 </html>"""
@@ -997,9 +1039,10 @@ async def create_event(req: EventCreateRequest, request: Request):
         "guests": req.guests,  # [{name, number}] stored server-side per account
     }
     save_events(events)
+    email_sent = False
     if req.host_email:
-        send_magic_link_email(events[event_id], event_id, auth_token)
-    return {"event_id": event_id, "invite_url": invite_url, "auth_token": auth_token}
+        email_sent = send_magic_link_email(events[event_id], event_id, auth_token)
+    return {"event_id": event_id, "invite_url": invite_url, "auth_token": auth_token, "email_sent": email_sent}
 
 
 NOT_FOUND_PAGE = """<!DOCTYPE html>
@@ -1221,10 +1264,11 @@ async def get_gallery(event_id: str, token: str = "", request: Request = None):
     stored_token = event.get("auth_token", "")
     is_host = (user_id and event.get("user_id") == user_id) or (stored_token and token == stored_token)
     approved = [p for p in gallery if p.get("status") == "approved"]
+    event_date = event.get("date", "")
     if is_host:
         pending = [p for p in gallery if p.get("status") == "pending"]
-        return {"approved": approved, "pending": pending, "is_host": True}
-    return {"approved": approved, "is_host": False}
+        return {"approved": approved, "pending": pending, "is_host": True, "event_date": event_date}
+    return {"approved": approved, "is_host": False, "event_date": event_date}
 
 
 @app.post("/api/event/{event_id}/gallery/{photo_id}/approve")
@@ -1444,7 +1488,10 @@ async def stripe_webhook(request: Request):
             events = load_events()
             ev = events.get(event_id, {})
             pending = ev.get("pending_send", {})
-            if pending:
+            # Idempotency: only fire once even if Stripe retries the webhook
+            if pending and not ev.get("pending_send_fired"):
+                events[event_id]["pending_send_fired"] = True
+                save_events(events)
                 await fire_sms_blast(
                     guests=pending.get("guests", []),
                     message=pending.get("message", ""),
@@ -1466,6 +1513,8 @@ async def handle_rsvp(event_id: str, data: RSVPRequest, request: Request):
     ip = get_client_ip(request)
     if not check_rate_limit(ip, max_calls=10, window_seconds=300):
         raise HTTPException(429, detail="Too many RSVP submissions.")
+    if not data.guest_name or not data.guest_name.strip():
+        raise HTTPException(400, detail="Name is required.")
     events = load_events()
     if event_id not in events:
         raise HTTPException(404, detail="Event not found")
@@ -1674,10 +1723,11 @@ async def get_user_events(request: Request):
                 "venue":      e.get("venue"),
                 "invite_url": e.get("invite_url"),
                 "auth_token": e.get("auth_token", ""),
-                "rsvp_count": len(e.get("rsvps", [])),
-                "sent":       e.get("sent", False),
-                "created":    e.get("created"),
-                "guests":     e.get("guests", []),
+                "rsvp_count":        len(e.get("rsvps", [])),
+                "sent":              e.get("sent", False),
+                "phone_send_method": e.get("phone_send_method", ""),
+                "created":           e.get("created"),
+                "guests":            e.get("guests", []),
             }
             for e in events
         ]
