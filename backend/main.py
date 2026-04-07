@@ -1824,7 +1824,7 @@ async def resend_magic_link(event_id: str, body: ResendLinkRequest, request: Req
     ip = get_client_ip(request)
     if not check_rate_limit(ip, max_calls=3, window_seconds=300):
         raise HTTPException(429, detail="Too many resend requests.")
-    user_id = get_current_user_id(request)
+    user_id = auth_module.get_current_user_id(request)
     events = load_events()
     ev = events.get(event_id)
     if not ev:
@@ -1856,6 +1856,44 @@ async def get_event_status(event_id: str):
         "invite_url": event.get("invite_url", ""),
         "has_email": bool(event.get("host_email", "")),
     }
+
+
+@app.post("/api/debug/email-test")
+async def debug_email_test(request: Request):
+    """Admin-only: send a test email and return the full result. Protected by JWT."""
+    user_id = auth_module.get_current_user_id(request)
+    if not user_id:
+        raise HTTPException(401, detail="Not authenticated")
+    import urllib.request as _req, ssl as _ssl, urllib.error as _err
+    api_key = os.getenv("RESEND_API_KEY", "") or RESEND_API_KEY
+    from_addr = os.getenv("FROM_EMAIL", FROM_EMAIL)
+    user = db.get_user_by_id(user_id)
+    to_email = user["email"] if user else None
+    if not to_email:
+        raise HTTPException(400, detail="No email for user")
+    body = json.dumps({
+        "from": from_addr,
+        "to": [to_email],
+        "subject": "InviteForge — Email Test",
+        "html": "<h2>Email delivery confirmed</h2><p>Your InviteForge email is working correctly.</p>"
+    }).encode()
+    req = _req.Request("https://api.resend.com/emails", data=body, method="POST",
+                       headers={"Authorization": f"Bearer {api_key}",
+                                "Content-Type": "application/json",
+                                "User-Agent": "InviteForge/1.0",
+                                "Accept": "application/json"})
+    try:
+        with _req.urlopen(req, timeout=15) as r:
+            resp_body = r.read().decode()
+            return {"success": True, "status": r.status, "response": resp_body,
+                    "to": to_email, "from": from_addr, "api_key_prefix": api_key[:8] + "..."}
+    except _err.HTTPError as e:
+        err_body = e.read().decode()
+        return {"success": False, "http_error": e.code, "response": err_body,
+                "to": to_email, "from": from_addr, "api_key_prefix": api_key[:8] + "..."}
+    except Exception as e:
+        return {"success": False, "error": str(e), "error_type": type(e).__name__,
+                "to": to_email, "from": from_addr, "api_key_prefix": api_key[:8] + "..."}
 
 
 if __name__ == "__main__":
