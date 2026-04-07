@@ -740,6 +740,13 @@
   </div>
 
   <script>
+    // ── HTML ESCAPE HELPER — always use for user data in innerHTML ──
+    function esc(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
     // ── STATE ──
     const state = {
       step: 1,
@@ -913,7 +920,8 @@
 
     function updateMessagePreview() {
       const msg = document.getElementById('messageText').value;
-      const preview = msg
+      // Escape first, then substitute safe HTML spans for the known placeholders
+      const preview = esc(msg)
         .replace('[Name]', '<span class="name-placeholder">Emma Johnson</span>')
         .replace('[InviteLink]', '<span style="color:var(--gold);font-weight:600;">🔗 [your invite link — auto-inserted on send]</span>');
       document.getElementById('messagePreviewText').innerHTML = preview.replace(/\n/g, '<br>');
@@ -1067,6 +1075,7 @@
       let number = cleaned;
       if (/^07\d{9}$/.test(cleaned))          number = '+44' + cleaned.slice(1);
       else if (/^7\d{9}$/.test(cleaned))       number = '+44' + cleaned;
+      else if (/^44\d{10}$/.test(cleaned))     number = '+' + cleaned;   // 447712345678
       else if (/^\+44\d{10}$/.test(cleaned))   number = cleaned;
       else if (/^\+\d{10,15}$/.test(cleaned))  number = cleaned;  // international
       else if (/^1\d{10}$/.test(cleaned))      number = '+' + cleaned; // US
@@ -1098,8 +1107,8 @@
       tbody.innerHTML = displayGuests.map((g, i) => `
         <tr>
           <td style="color:var(--grey)">${i + 1}</td>
-          <td>${g.name}</td>
-          <td style="font-family:monospace;font-size:12px;">${g.number}</td>
+          <td>${esc(g.name)}</td>
+          <td style="font-family:monospace;font-size:12px;">${esc(g.number)}</td>
           <td><span class="${g.valid ? 'status-ok' : 'status-warn'}">${g.valid ? '✓ Ready' : '⚠ Check'}</span></td>
         </tr>
       `).join('');
@@ -1195,11 +1204,11 @@
           document.getElementById('inviteCreating').style.display = 'none';
           document.getElementById('invitePreviewWrap').style.display = 'block';
 
-          // Show email confirmation if host email was provided
+          // Show email confirmation only when API confirms the email was sent
           const hostEmailVal = document.getElementById('hostEmail')?.value?.trim();
           const emailConfirmEl = document.getElementById('emailSentConfirm');
           if (emailConfirmEl) {
-            if (hostEmailVal && data.auth_token) {
+            if (hostEmailVal && data.email_sent) {
               emailConfirmEl.textContent = `📧 Dashboard link sent to ${hostEmailVal}`;
               emailConfirmEl.style.display = 'block';
             } else {
@@ -1217,7 +1226,15 @@
           document.getElementById('inviteCreating').innerHTML = '<div style="color:#f59e0b;padding:24px;">⚠️ Could not create invite — is the backend running?</div>';
         }
       } else {
-        // Event already created — just reload iframe with existing URL
+        // Event already created — sync updated guest list to server (user may have gone back to step 4)
+        const _jwt = localStorage.getItem('if_jwt') || '';
+        const guestPayload = state.guests.filter(g=>g.valid).map(g=>({name:g.name,number:g.number}));
+        fetch(`/api/event/${state.eventId}/guests`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json',...(_jwt?{'Authorization':'Bearer '+_jwt}:{})},
+          body:JSON.stringify({event_id:state.eventId,auth_token:state.authToken,guests:guestPayload})
+        }).catch(()=>{});
+        // Reload iframe with existing URL
         const iframeSrc = state.inviteUrl + '?name=' + encodeURIComponent(sampleName);
         document.getElementById('inviteFrame').src = iframeSrc;
         document.getElementById('inviteOpenBtn').href = iframeSrc;
@@ -1516,11 +1533,17 @@
     function renderDashboardTable(rsvpMap) {
       const tbody = document.getElementById('dashboardBody');
       tbody.innerHTML = state.guests.filter(g=>g.valid).map(g => {
-        const inviteStatus = g.sendStatus === 'sent'
-          ? '<span class="badge badge-sent">✓ Sent</span>'
-          : g.sendStatus === 'failed'
-            ? `<span class="badge badge-failed" title="${g.sendError||''}">✗ Failed</span>`
-            : '<span class="badge badge-pending">Queued</span>';
+        const sendLabel = g.sendStatus === 'sent'
+          ? '✓ Sent'
+          : g.sendStatus === 'phone'
+            ? '📱 Via Phone'
+            : g.sendStatus === 'failed'
+              ? '✗ Failed'
+              : 'Queued';
+        const sendClass = g.sendStatus === 'sent' ? 'badge-sent'
+          : g.sendStatus === 'phone' ? 'badge-sent'
+          : g.sendStatus === 'failed' ? 'badge-failed' : 'badge-pending';
+        const inviteStatus = `<span class="badge ${sendClass}" title="${esc(g.sendError||'')}">${sendLabel}</span>`;
         const rsvp = rsvpMap[g.name.toLowerCase()];
         const rsvpBadge = rsvp
           ? (rsvp.attending === 'yes'
@@ -1530,12 +1553,12 @@
         const attending = rsvp && rsvp.attending === 'yes' ? rsvp.guests_count || 1 : '—';
         return `
         <tr>
-          <td><strong>${g.name}</strong></td>
-          <td style="font-family:monospace;font-size:12px;color:var(--grey)">${g.number}</td>
+          <td><strong>${esc(g.name)}</strong></td>
+          <td style="font-family:monospace;font-size:12px;color:var(--grey)">${esc(g.number)}</td>
           <td>${inviteStatus}</td>
           <td>${rsvpBadge}</td>
           <td>${attending}</td>
-          <td>${rsvp && rsvp.dietary ? rsvp.dietary : '—'}</td>
+          <td>${esc(rsvp && rsvp.dietary ? rsvp.dietary : '—')}</td>
         </tr>`;
       }).join('');
     }
@@ -1547,31 +1570,7 @@
 
       // If customer used phone send, open the phone modal with non-responders only
       if (state.sendMethod === 'phone_sms' || state.sendMethod === 'phone_whatsapp') {
-        const baseUrl = state.inviteUrl || localStorage.getItem('if_invite_url') || '';
-        if (!baseUrl) { alert('Invite URL not available.'); return; }
-        const type = state.sendMethod;
-        const rows = nonResponders.map(g => {
-          const msg = encodeURIComponent(buildPhoneMessage(g.name));
-          const num = g.number.replace(/\s+/g, '');
-          const href = type === 'phone_sms'
-            ? `sms:${num}?body=${msg}`
-            : `https://wa.me/${num.replace(/^\+/,'')}?text=${msg}`;
-          const target = type === 'phone_sms' ? '_self' : '_blank';
-          return `<div class="phone-modal-row">
-            <span class="phone-modal-name">${g.name}</span>
-            <a href="${href}" target="${target}" class="phone-modal-btn">${type === 'phone_sms' ? '💬 SMS' : '💚 WhatsApp'}</a>
-          </div>`;
-        }).join('');
-        document.getElementById('phoneSendList').innerHTML = rows;
-        document.getElementById('phoneSendProgress').textContent = `0 / ${nonResponders.length} sent`;
-        document.getElementById('phoneSendTitle').textContent = type === 'phone_sms' ? '📱 Send Reminders via SMS' : '💬 Send Reminders via WhatsApp';
-        document.getElementById('phoneSendSub').textContent = type === 'phone_sms'
-          ? 'Tap each button → Messages opens → hit Send → come back'
-          : 'Tap each button → WhatsApp opens → hit Send → come back';
-        _phoneSentCount = 0;
-        _phoneTotalCount = nonResponders.length;
-        document.getElementById('phoneSendModal').style.display = 'block';
-        document.body.style.overflow = 'hidden';
+        openPhoneSendModal(state.sendMethod, nonResponders);
         return;
       }
 
@@ -1698,6 +1697,7 @@
       });
       document.getElementById('guestResults').style.display = 'none';
       document.getElementById('prevStats').style.display = 'none';
+      const gp = document.getElementById('galleryPanel'); if (gp) gp.style.display = 'none';
       if (dashboardPollTimer) { clearInterval(dashboardPollTimer); dashboardPollTimer = null; }
       if (window._galleryPollTimer) { clearInterval(window._galleryPollTimer); window._galleryPollTimer = null; }
       goStep(1);
@@ -1872,8 +1872,8 @@
       return `Hi ${name}! You're invited to ${eventName}. Tap here for your invite: ${url}`;
     }
 
-    function openPhoneSendModal(type) {
-      const valid = state.guests.filter(g => g.valid);
+    function openPhoneSendModal(type, customGuests) {
+      const valid = customGuests || state.guests.filter(g => g.valid);
       if (!valid.length) { showSendError('No valid guests to send to.'); return; }
       // Guard: must have invite URL before opening modal
       const baseUrl = state.inviteUrl || localStorage.getItem('if_invite_url') || '';
@@ -1907,8 +1907,8 @@
         const target = type === 'phone_sms' ? '_self' : '_blank';
         return `<div class="phone-guest-row${alreadySent ? ' done' : ''}" id="pgrow-${i}">
           <div class="phone-guest-info">
-            <div class="gname">${g.name}</div>
-            <div class="gnum">${g.number}</div>
+            <div class="gname">${esc(g.name)}</div>
+            <div class="gnum">${esc(g.number)}</div>
           </div>
           <a href="${href}" class="phone-send-btn ${btnExtra}" id="pgbtn-${i}"
             onclick="markPhoneGuestSent(${i})" target="${target}">${btnLabel}</a>
@@ -1950,6 +1950,8 @@
       _phoneClearSentSet();
       state.sentCount = _phoneSentCount;
       state.failedCount = _phoneTotalCount - _phoneSentCount;
+      // Mark all valid guests as sent via phone so dashboard shows "Via Phone" not "Queued"
+      state.guests.filter(g => g.valid).forEach(g => { if (!g.sendStatus || g.sendStatus === 'pending') g.sendStatus = 'phone'; });
       goStep(6);
     }
 
@@ -2084,7 +2086,9 @@
       state.authToken = ev.auth_token || '';
       state.eventName = ev.name || '';
       if (ev.guests && Array.isArray(ev.guests) && ev.guests.length > 0) {
-        state.guests = ev.guests.map(function(g) { return Object.assign({}, g, {valid: true, sendStatus: 'sent'}); });
+        // sendStatus: 'sent' if Twilio blast ran, 'phone' if phone-send, 'pending' otherwise
+        const sendSt = ev.sent ? 'sent' : (ev.phone_send_method ? 'phone' : 'pending');
+        state.guests = ev.guests.map(function(g) { return Object.assign({}, g, {valid: true, sendStatus: sendSt}); });
       }
       if (state.eventId) {
         sessionStorage.setItem('if_event_id', state.eventId);
