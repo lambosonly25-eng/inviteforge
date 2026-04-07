@@ -429,15 +429,17 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
     .rsvp-input::placeholder, .rsvp-textarea::placeholder {{ color: rgba(255,255,255,0.25); }}
     .rsvp-select option {{ background: var(--navy-mid); }}
     .rsvp-attending {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }}
-    .rsvp-attending-btn {{
-      padding: 18px 16px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.15);
-      background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); font-size: 15px; font-weight: 600;
-      cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
-      font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;
+    .rsvp-attending input[type="radio"] {{ position: absolute; opacity: 0; width: 0; height: 0; }}
+    .rsvp-attending-label {{
+      display: block; padding: 18px 16px; border-radius: 12px;
+      border: 2px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7);
+      font-size: 15px; font-weight: 600; text-align: center;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent; user-select: none;
     }}
-    .rsvp-attending-btn.yes.selected {{ background: #22c55e; border-color: #22c55e; color: #fff; }}
-    .rsvp-attending-btn.no.selected {{ background: #ef4444; border-color: #ef4444; color: #fff; }}
-    #rsvpAttending {{ display: none; }}
+    .rsvp-attending-label.yes.selected {{ background: #22c55e; border-color: #22c55e; color: #fff; }}
+    .rsvp-attending-label.no.selected {{ background: #ef4444; border-color: #ef4444; color: #fff; }}
     .btn-submit-rsvp {{
       width: 100%; padding: 18px; border-radius: 12px;
       background: var(--gold); color: var(--navy);
@@ -525,10 +527,15 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
         <div class="rsvp-group">
           <label class="rsvp-label">Will you be attending?</label>
           <div class="rsvp-attending">
-            <button type="button" class="rsvp-attending-btn yes" onclick="selectAttending('yes')">✓ Attending</button>
-            <button type="button" class="rsvp-attending-btn no" onclick="selectAttending('no')">✗ Can't Make It</button>
+            <label class="rsvp-attending-label yes" id="labelYes">
+              <input type="radio" name="rsvpAttending" id="raYes" value="yes" checked onchange="updateAttending()">
+              ✓ Attending
+            </label>
+            <label class="rsvp-attending-label no" id="labelNo">
+              <input type="radio" name="rsvpAttending" id="raNo" value="no" onchange="updateAttending()">
+              ✗ Can't Make It
+            </label>
           </div>
-          <input type="hidden" id="rsvpAttending"/>
         </div>
         <div id="rsvpYesFields" style="display:none;">
           <div class="rsvp-group">
@@ -631,8 +638,8 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
         msgEl.textContent = msgEl.textContent.replace(/\[Name\]/gi, guestName);
       }}
     }}
-    // Default attending to "yes" so guests don't have to tap before submitting
-    selectAttending('yes');
+    // Initialise attending selection (radio defaults to yes=checked)
+    updateAttending();
 
     // Build calendar links (Google + Apple/iCal)
     (function() {{
@@ -675,10 +682,11 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
       }} catch(e) {{}}
     }})();
 
-    function selectAttending(val) {{
-      document.getElementById('rsvpAttending').value = val;
-      document.querySelectorAll('.rsvp-attending-btn').forEach(b => b.classList.remove('selected'));
-      document.querySelector('.rsvp-attending-btn.' + val).classList.add('selected');
+    function updateAttending() {{
+      var checked = document.querySelector('input[name="rsvpAttending"]:checked');
+      var val = checked ? checked.value : 'yes';
+      document.getElementById('labelYes').classList.toggle('selected', val === 'yes');
+      document.getElementById('labelNo').classList.toggle('selected', val === 'no');
       document.getElementById('rsvpYesFields').style.display = val === 'yes' ? 'block' : 'none';
     }}
 
@@ -686,7 +694,8 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
       const btn = document.getElementById('rsvpSubmitBtn');
       if (btn.disabled) return;
       const name = document.getElementById('rsvpName').value.trim();
-      const attending = document.getElementById('rsvpAttending').value;
+      const attendingEl = document.querySelector('input[name="rsvpAttending"]:checked');
+      const attending = attendingEl ? attendingEl.value : '';
       if (!name) {{ showRsvpError('Please enter your name.'); return; }}
       if (!attending) {{ showRsvpError('Please select whether you are attending.'); return; }}
       btn.disabled = true;
@@ -1111,7 +1120,10 @@ async def serve_invite(event_id: str):
     event = events.get(event_id)
     if not event:
         return HTMLResponse(NOT_FOUND_PAGE, status_code=404)
-    return HTMLResponse(build_invite_page(event, event_id))
+    return HTMLResponse(
+        build_invite_page(event, event_id),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}
+    )
 
 
 @app.post("/api/upload-media")
