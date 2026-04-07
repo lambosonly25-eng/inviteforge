@@ -340,8 +340,7 @@
       </div>
     </div>
     <div id="headerAuth" style="display:flex;align-items:center;gap:12px;">
-      <!-- Populated by initAuthHeader() on page load -->
-      <a href="/login" style="font-size:13px;color:var(--grey);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#c9a96e'" onmouseout="this.style.color='#9ca3af'">Sign in ↗</a>
+      <!-- Populated by initAuthHeader() — starts empty to avoid flash of wrong state -->
     </div>
     <div style="font-size:13px;color:var(--grey);">Step <span id="stepLabel">1</span> of 6</div>
   </header>
@@ -2037,16 +2036,10 @@
         btn.style.cssText = 'font-size:13px;color:#c9a96e;background:rgba(201,169,110,0.1);border:1px solid rgba(201,169,110,0.3);padding:6px 14px;border-radius:100px;cursor:pointer;font-family:Inter,sans-serif;font-weight:600;';
         btn.onclick = openMyEvents;
         container.appendChild(btn);
-      } else {
-        const a = document.createElement('a');
-        a.href = '/login';
-        a.textContent = 'Sign in ↗';
-        a.style.cssText = 'font-size:13px;color:#9ca3af;text-decoration:none;';
-        a.onmouseover = () => { a.style.color = '#c9a96e'; };
-        a.onmouseout  = () => { a.style.color = '#9ca3af'; };
-        container.appendChild(a);
       }
+      // No "Sign in" shown — unauthenticated users are redirected to /login before reaching here
     }
+    initAuthHeader();
 
     function doLogout() {
       localStorage.removeItem('if_jwt');
@@ -2252,7 +2245,6 @@
       }
     }
 
-    initAuthHeader();
   </script>
 
   <!-- PHONE SEND MODAL -->
