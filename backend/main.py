@@ -429,17 +429,16 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
     .rsvp-input::placeholder, .rsvp-textarea::placeholder {{ color: rgba(255,255,255,0.25); }}
     .rsvp-select option {{ background: var(--navy-mid); }}
     .rsvp-attending {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }}
-    .rsvp-attending input[type="radio"] {{ position: absolute; opacity: 0; width: 0; height: 0; }}
-    .rsvp-attending-label {{
-      display: block; padding: 18px 16px; border-radius: 12px;
+    .rsvp-attending-btn {{
+      display: block; width: 100%; padding: 18px 16px; border-radius: 12px;
       border: 2px solid rgba(255,255,255,0.15);
       background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7);
       font-size: 15px; font-weight: 600; text-align: center;
       cursor: pointer; font-family: 'Inter', sans-serif;
-      -webkit-tap-highlight-color: transparent; user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }}
-    .rsvp-attending-label.yes.selected {{ background: #22c55e; border-color: #22c55e; color: #fff; }}
-    .rsvp-attending-label.no.selected {{ background: #ef4444; border-color: #ef4444; color: #fff; }}
+    .rsvp-attending-btn.yes.selected {{ background: #22c55e; border-color: #22c55e; color: #fff; }}
+    .rsvp-attending-btn.no.selected {{ background: #ef4444; border-color: #ef4444; color: #fff; }}
     .btn-submit-rsvp {{
       width: 100%; padding: 18px; border-radius: 12px;
       background: var(--gold); color: var(--navy);
@@ -477,7 +476,11 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
     </div>
   </div>
   <style>@keyframes spin{{to{{transform:rotate(360deg)}}}}</style>
-  <script>window.addEventListener('load',function(){{var l=document.getElementById('pageLoader');l.style.opacity='0';setTimeout(function(){{l.style.display='none'}},600);}});</script>
+  <script>
+    function _hideLoader(){{var l=document.getElementById('pageLoader');if(!l||l.dataset.hidden)return;l.dataset.hidden='1';l.style.pointerEvents='none';l.style.opacity='0';setTimeout(function(){{l.style.display='none'}},600);}}
+    window.addEventListener('load',_hideLoader);
+    setTimeout(_hideLoader,2500);
+  </script>
 
   <section class="hero">
     <div class="hero-media" id="heroMedia">{HERO_MEDIA}</div>
@@ -527,15 +530,10 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
         <div class="rsvp-group">
           <label class="rsvp-label">Will you be attending?</label>
           <div class="rsvp-attending">
-            <label class="rsvp-attending-label yes" id="labelYes">
-              <input type="radio" name="rsvpAttending" id="raYes" value="yes" checked onchange="updateAttending()">
-              ✓ Attending
-            </label>
-            <label class="rsvp-attending-label no" id="labelNo">
-              <input type="radio" name="rsvpAttending" id="raNo" value="no" onchange="updateAttending()">
-              ✗ Can't Make It
-            </label>
+            <button type="button" id="btnYes" class="rsvp-attending-btn yes selected" onclick="selectAttending('yes')">✓ Attending</button>
+            <button type="button" id="btnNo"  class="rsvp-attending-btn no"           onclick="selectAttending('no')">✗ Can't Make It</button>
           </div>
+          <input type="hidden" id="rsvpAttending" value="yes"/>
         </div>
         <div id="rsvpYesFields" style="display:none;">
           <div class="rsvp-group">
@@ -560,10 +558,10 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
         <button type="button" class="btn-submit-rsvp" id="rsvpSubmitBtn" onclick="submitRSVP()">Send My RSVP</button>
       </div>
       <div class="rsvp-success" id="rsvpSuccess">
-        <div class="rsvp-success-icon">💌</div>
-        <h3>RSVP Received</h3>
-        <p>Thank you! Your response has been sent and the host has been notified. We look forward to seeing you.</p>
-        <p style="margin-top:12px;font-size:13px;opacity:0.6;">You can close this page — your RSVP is saved.</p>
+        <div class="rsvp-success-icon">🎉</div>
+        <h3 id="rsvpSuccessTitle">You're on the list!</h3>
+        <p id="rsvpSuccessMsg">Thank you — your RSVP has been received and the host has been notified.</p>
+        <p style="margin-top:16px;font-size:13px;color:rgba(201,169,110,0.7);">You can safely close this page.</p>
       </div>
     </div>
   </section>
@@ -638,8 +636,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
         msgEl.textContent = msgEl.textContent.replace(/\[Name\]/gi, guestName);
       }}
     }}
-    // Initialise attending selection (radio defaults to yes=checked)
-    updateAttending();
+    // "Attending" is pre-selected by default (value set in HTML)
 
     // Build calendar links (Google + Apple/iCal)
     (function() {{
@@ -682,11 +679,10 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
       }} catch(e) {{}}
     }})();
 
-    function updateAttending() {{
-      var checked = document.querySelector('input[name="rsvpAttending"]:checked');
-      var val = checked ? checked.value : 'yes';
-      document.getElementById('labelYes').classList.toggle('selected', val === 'yes');
-      document.getElementById('labelNo').classList.toggle('selected', val === 'no');
+    function selectAttending(val) {{
+      document.getElementById('rsvpAttending').value = val;
+      document.getElementById('btnYes').classList.toggle('selected', val === 'yes');
+      document.getElementById('btnNo').classList.toggle('selected', val === 'no');
       document.getElementById('rsvpYesFields').style.display = val === 'yes' ? 'block' : 'none';
     }}
 
@@ -694,8 +690,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
       const btn = document.getElementById('rsvpSubmitBtn');
       if (btn.disabled) return;
       const name = document.getElementById('rsvpName').value.trim();
-      const attendingEl = document.querySelector('input[name="rsvpAttending"]:checked');
-      const attending = attendingEl ? attendingEl.value : '';
+      const attending = document.getElementById('rsvpAttending').value;
       if (!name) {{ showRsvpError('Please enter your name.'); return; }}
       if (!attending) {{ showRsvpError('Please select whether you are attending.'); return; }}
       btn.disabled = true;
@@ -723,7 +718,17 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
         return;
       }}
       document.getElementById('rsvpForm').style.display = 'none';
-      document.getElementById('rsvpSuccess').style.display = 'block';
+      var successDiv = document.getElementById('rsvpSuccess');
+      successDiv.style.display = 'block';
+      var title = document.getElementById('rsvpSuccessTitle');
+      var msg = document.getElementById('rsvpSuccessMsg');
+      if (attending === 'yes') {{
+        if (title) title.textContent = name ? name + ', you\u2019re on the list! \uD83C\uDF89' : 'You\u2019re on the list! \uD83C\uDF89';
+        if (msg) msg.textContent = 'Amazing! Your RSVP is confirmed. The host has been notified and can\u2019t wait to see you.';
+      }} else {{
+        if (title) title.textContent = 'RSVP Received';
+        if (msg) msg.textContent = (name ? name + ', thanks' : 'Thanks') + ' for letting us know — we\u2019ll miss you!';
+      }}
     }}
 
     function showRsvpError(msg) {{
