@@ -863,7 +863,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
 
     // Hide gallery upload section for upcoming events
     (function() {{
-      var rawDate = '{RAW_DATE}';
+      var rawDate = {RAW_DATE};
       if (!rawDate) return;
       try {{
         var eventDate = new Date(rawDate + 'T00:00:00');
