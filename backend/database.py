@@ -14,7 +14,6 @@ import json
 import threading
 import uuid
 import urllib.request
-import ssl
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -71,7 +70,6 @@ def init_db():
 def _gist_request(method: str, data: Optional[dict] = None) -> Optional[dict]:
     if not _GIST_ID or not _GITHUB_TOKEN:
         return None
-    ctx = ssl._create_unverified_context()
     req = urllib.request.Request(
         f"https://api.github.com/gists/{_GIST_ID}",
         method=method,
@@ -84,7 +82,7 @@ def _gist_request(method: str, data: Optional[dict] = None) -> Optional[dict]:
     if data is not None:
         req.data = json.dumps(data).encode()
     try:
-        with urllib.request.urlopen(req, context=ctx, timeout=15) as r:
+        with urllib.request.urlopen(req, timeout=15) as r:
             return json.load(r)
     except Exception:
         return None
