@@ -200,12 +200,14 @@ class EventCreateRequest(BaseModel):
     media_url: str = ""
     guests: list = []  # [{name, number}] — stored server-side for account isolation
 
+from pydantic import Field as _Field
+
 class RSVPRequest(BaseModel):
-    guest_name: str = ""
-    attending: str = ""
+    guest_name: str  = _Field("",  max_length=100)
+    attending: str   = _Field("",  max_length=10)
     guests_count: int = 1
-    dietary: str = ""
-    message: str = ""
+    dietary: str     = _Field("",  max_length=500)
+    message: str     = _Field("",  max_length=1000)
 
 class SaveGuestsRequest(BaseModel):
     event_id: str
@@ -251,8 +253,10 @@ async def fire_sms_blast(guests: list, message: str, sender: str, event_id: str)
     results = []
     for guest in guests:
         name = guest.get("name", "")
-        number = guest.get("number", "")
-        if not number or not number.startswith("+"):
+        raw_number = guest.get("number", "")
+        # Normalise number in case it was stored without + prefix
+        number = format_number(raw_number) if raw_number else None
+        if not number:
             results.append({"name": name, "success": False, "error": "Invalid number"})
             continue
         invite_url = f"{PUBLIC_URL}/invite/{event_id}?name={urlquote(name)}" if PUBLIC_URL else f"/invite/{event_id}?name={urlquote(name)}"
@@ -1116,8 +1120,7 @@ async def upload_media(file: UploadFile = File(...), request: Request = None):
                          "Content-Type": "application/json",
                          "Accept": "application/vnd.github.v3+json"}
             )
-            ctx = ssl._create_unverified_context()
-            with urllib_req.urlopen(req, context=ctx) as r:
+            with urllib_req.urlopen(req) as r:
                 resp = json.load(r)
             cdn_url = resp["content"]["download_url"]
             return {"url": cdn_url, "filename": safe_name, "storage": "github"}
@@ -1195,7 +1198,7 @@ def _save_photo_to_cdn(data: bytes, path: str) -> str:
                 headers={"Authorization": f"token {GITHUB_TOKEN}", "Content-Type": "application/json",
                          "Accept": "application/vnd.github.v3+json"}
             )
-            with _ur.urlopen(req, context=_ssl._create_unverified_context()) as r:
+            with _ur.urlopen(req) as r:
                 return json.load(r)["content"]["download_url"]
         except Exception:
             pass
@@ -1311,15 +1314,19 @@ async def gallery_decline(event_id: str, photo_id: str, request: Request, token:
 
 @app.post("/api/send-test")
 async def send_test(req: TestSendRequest, request: Request):
+    if not TEST_MODE:
+        raise HTTPException(403, detail="Test sends disabled in production.")
     ip = get_client_ip(request)
     if not check_rate_limit(ip, max_calls=5, window_seconds=60):
         raise HTTPException(429, detail="Too many test sends. Wait a minute and try again.")
     number = format_number(req.number)
     if not number:
         raise HTTPException(400, detail="Invalid phone number format")
+    # Sanitise sender same as blast
+    sender = re.sub(r'\s+', '', req.sender or '')[:11] or 'InviteForge'
     try:
         client = twilio_client()
-        msg = client.messages.create(body=req.message, from_=req.sender, to=number)
+        msg = client.messages.create(body=req.message, from_=sender, to=number)
         return {"success": True, "sid": msg.sid, "to": number}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -1483,27 +1490,35 @@ async def stripe_webhook(request: Request):
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
-        event_id = session.get("metadata", {}).get("event_id")
+        meta = session.get("metadata", {})
+        event_id = meta.get("event_id")
+        checkout_type = meta.get("type", "")  # "phone_send" or "" for Twilio auto-send
         if event_id:
             events = load_events()
             ev = events.get(event_id, {})
-            pending = ev.get("pending_send", {})
-            # Idempotency: only fire once even if Stripe retries the webhook
-            if pending and not ev.get("pending_send_fired"):
-                events[event_id]["pending_send_fired"] = True
-                save_events(events)
-                await fire_sms_blast(
-                    guests=pending.get("guests", []),
-                    message=pending.get("message", ""),
-                    sender=pending.get("sender", "InviteForge"),
-                    event_id=event_id,
-                )
-                # Send magic link email post-payment — "your invites are flying out"
-                events_fresh = load_events()
-                ev_fresh = events_fresh.get(event_id, {})
-                auth_token = ev_fresh.get("auth_token", "")
+            if checkout_type == "phone_send":
+                # Phone send: no SMS blast from our side, but send dashboard magic link
+                auth_token = ev.get("auth_token", "")
                 if auth_token:
-                    send_magic_link_email(ev_fresh, event_id, auth_token)
+                    send_magic_link_email(ev, event_id, auth_token)
+            else:
+                # Twilio auto-send: fire SMS blast (idempotent)
+                pending = ev.get("pending_send", {})
+                if pending and not ev.get("pending_send_fired"):
+                    events[event_id]["pending_send_fired"] = True
+                    save_events(events)
+                    await fire_sms_blast(
+                        guests=pending.get("guests", []),
+                        message=pending.get("message", ""),
+                        sender=pending.get("sender", "InviteForge"),
+                        event_id=event_id,
+                    )
+                    # Send magic link email post-payment — "your invites are flying out"
+                    events_fresh = load_events()
+                    ev_fresh = events_fresh.get(event_id, {})
+                    auth_token = ev_fresh.get("auth_token", "")
+                    if auth_token:
+                        send_magic_link_email(ev_fresh, event_id, auth_token)
 
     return {"received": True}
 
