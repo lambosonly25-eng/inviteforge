@@ -863,9 +863,9 @@
     function goStep(n) {
       document.getElementById('step' + state.step).classList.remove('active');
       // Stop dashboard polling when leaving step 6
-      if (state.step === 6 && n !== 6 && dashboardPollTimer) {
-        clearInterval(dashboardPollTimer);
-        dashboardPollTimer = null;
+      if (state.step === 6 && n !== 6) {
+        if (dashboardPollTimer) { clearInterval(dashboardPollTimer); dashboardPollTimer = null; }
+        if (window._galleryPollTimer) { clearInterval(window._galleryPollTimer); window._galleryPollTimer = null; }
       }
       state.step = n;
       document.getElementById('step' + n).classList.add('active');
@@ -1478,6 +1478,9 @@
       loadDashboardRsvps();
       dashboardPollTimer = setInterval(loadDashboardRsvps, 15000);
       loadGallery();
+      if (!window._galleryPollTimer) {
+        window._galleryPollTimer = setInterval(loadGallery, 30000);
+      }
     }
 
     async function loadDashboardRsvps() {
@@ -1696,6 +1699,7 @@
       document.getElementById('guestResults').style.display = 'none';
       document.getElementById('prevStats').style.display = 'none';
       if (dashboardPollTimer) { clearInterval(dashboardPollTimer); dashboardPollTimer = null; }
+      if (window._galleryPollTimer) { clearInterval(window._galleryPollTimer); window._galleryPollTimer = null; }
       goStep(1);
     }
 
