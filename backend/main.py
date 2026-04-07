@@ -764,7 +764,9 @@ async def service_worker():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "InviteForge API"}
+    return {"status": "ok", "service": "InviteForge API",
+            "resend_key_set": bool(os.getenv("RESEND_API_KEY", "") or RESEND_API_KEY),
+            "resend_key_len": len(os.getenv("RESEND_API_KEY", "") or RESEND_API_KEY)}
 
 @app.get("/api/config")
 async def get_config():
