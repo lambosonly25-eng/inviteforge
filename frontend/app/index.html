@@ -481,7 +481,7 @@
       <!-- STEP 3 — MESSAGE -->
       <div class="step-content" id="step3">
         <div class="step-heading">Your invitation message</div>
-        <div class="step-sub">Pick a tone and AI writes it. Every guest gets their name automatically.</div>
+        <div class="step-sub">Pick a tone below and we'll write it for you. Every guest gets their name automatically. Edit it as much as you like.</div>
         <div class="form-group">
           <label class="form-label">Choose Your Tone</label>
           <div class="tone-grid">
@@ -504,9 +504,9 @@
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Generated Message (edit freely)</label>
-          <textarea class="form-textarea" id="messageText" rows="6" oninput="updatePreview(); checkSmsLength()" style="min-height:140px;"></textarea>
-          <div style="font-size:12px;color:var(--grey);margin-top:8px;">Use <strong style="color:var(--gold);">[Name]</strong> for the guest's name. <strong style="color:var(--gold);">[InviteLink]</strong> becomes the real invite URL when sent.</div>
+          <label class="form-label">Your Message <span style="font-weight:400;color:var(--grey);">(tap a tone above to generate, then edit freely)</span></label>
+          <textarea class="form-textarea" id="messageText" rows="6" oninput="updatePreview(); checkSmsLength()" style="min-height:140px;" placeholder="Select a tone above to generate your message..."></textarea>
+          <div style="font-size:12px;color:var(--grey);margin-top:8px;">Use <strong style="color:var(--gold);">[Name]</strong> where each guest's name should go. <strong style="color:var(--gold);">[InviteLink]</strong> is automatically replaced with their personal invite link.</div>
         </div>
         <div class="message-preview" id="messagePreview">
           <div class="message-preview-label">Preview (as received by guest)</div>
@@ -534,7 +534,7 @@
         <div style="text-align:center;color:var(--grey);font-size:14px;margin:-8px 0 20px;">— or type / paste names and numbers below —</div>
         <div class="form-group">
           <label class="form-label">Paste or Type Guest Data</label>
-          <textarea class="form-textarea" id="guestPaste" rows="6" placeholder="Type or paste here — one guest per line:&#10;&#10;Emma Johnson, 07712 345 ***&#10;David Williams, 07823 456 ***&#10;Sophie Taylor, 07934 567 ***&#10;&#10;Just name and number, separated by a comma. That's it." oninput="parseGuestPaste()"></textarea>
+          <textarea class="form-textarea" id="guestPaste" rows="6" placeholder="Type or paste here — one guest per line:&#10;&#10;Emma Johnson, 07712 345 678&#10;David Williams, 07823 456 789&#10;Sophie Taylor, 07934 567 890&#10;&#10;Just name and number, separated by a comma. That's it." oninput="parseGuestPaste()"></textarea>
           <div style="font-size:12px;color:var(--grey);margin-top:8px;">📌 One guest per line. Name, then number. Comma between them. UK numbers with or without 07/+44 — all work.</div>
         </div>
         <div id="guestResults" style="display:none;">
@@ -555,7 +555,7 @@
       <!-- STEP 5 — PREVIEW + SEND -->
       <div class="step-content" id="step5">
         <div class="step-heading">Preview & Send</div>
-        <div class="step-sub">This is exactly what your guests will see when they tap the link. Happy with it? Hit send.</div>
+        <div class="step-sub">This is exactly what your guests will see. Review your invite page and the SMS below, then choose how to send and complete payment.</div>
 
         <!-- INVITE PREVIEW — full width iframe -->
         <div style="margin-bottom:36px;">
@@ -668,7 +668,7 @@
           <div class="dash-stat"><div class="num" id="dSent">0</div><div class="label">Invites Sent</div></div>
           <div class="dash-stat"><div class="num" id="dRsvp">0</div><div class="label">RSVPs Received</div></div>
           <div class="dash-stat"><div class="num" id="dAttending">0</div><div class="label">Attending</div></div>
-          <div class="dash-stat"><div class="num" id="dFailed">0</div><div class="label">Failed</div></div>
+          <div class="dash-stat"><div class="num" id="dFailed">0</div><div class="label">Failed Sends</div></div>
         </div>
         <div id="dashInviteLink" style="display:none;background:rgba(201,169,110,0.06);border:1px solid rgba(201,169,110,0.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
           <div style="font-size:13px;color:var(--grey);">Your invite page: <span id="dashInviteUrl" style="color:var(--gold);font-weight:600;word-break:break-all;"></span></div>
