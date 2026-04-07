@@ -9,9 +9,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional
-import os, json, uuid, re, asyncio, shutil
+import os, json, uuid, re, asyncio, shutil, html, time
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote as urlquote
 from twilio.rest import Client
 
 # Load .env file if present
@@ -57,6 +58,25 @@ if STRIPE_SECRET_KEY:
         stripe = _stripe
     except ImportError:
         pass
+
+# ── RATE LIMITING ──
+# Simple in-memory per-IP rate limiter (resets on restart — good enough for free tier)
+_rate_store: dict = {}  # {ip: [timestamp, ...]}
+
+def check_rate_limit(ip: str, max_calls: int, window_seconds: int) -> bool:
+    """Returns True if request is allowed, False if rate limited."""
+    now = time.time()
+    calls = _rate_store.get(ip, [])
+    calls = [t for t in calls if now - t < window_seconds]
+    if len(calls) >= max_calls:
+        return False
+    calls.append(now)
+    _rate_store[ip] = calls
+    return True
+
+def get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    return forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
 
 # ── EVENT STORAGE ──
 EVENTS_FILE  = Path("events.json")
@@ -129,6 +149,7 @@ class EventCreateRequest(BaseModel):
     date: str = ""
     time: str = ""
     venue: str = ""
+    rsvp_deadline: str = ""
     template: str = "luxury"
     message: str = ""
     sender: str = "InviteForge"
@@ -143,6 +164,7 @@ class RSVPRequest(BaseModel):
 
 class CheckoutRequest(BaseModel):
     event_id: str
+    auth_token: str = ""
     guests: list   # [{name, number}]
     message: str
     sender: str = "InviteForge"
@@ -175,7 +197,7 @@ async def fire_sms_blast(guests: list, message: str, sender: str, event_id: str)
         if not number or not number.startswith("+"):
             results.append({"name": name, "success": False, "error": "Invalid number"})
             continue
-        invite_url = f"{PUBLIC_URL}/invite/{event_id}?name={name}" if PUBLIC_URL else f"/invite/{event_id}?name={name}"
+        invite_url = f"{PUBLIC_URL}/invite/{event_id}?name={urlquote(name)}" if PUBLIC_URL else f"/invite/{event_id}?name={urlquote(name)}"
         personalised = message.replace("[Name]", name).replace("[InviteLink]", invite_url)
         try:
             msg = client.messages.create(body=personalised, from_=sender, to=number)
@@ -424,6 +446,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
       {DATE_CARD}
       {VENUE_CARD}
       {TIME_CARD}
+      {DEADLINE_CARD}
     </div>
   </section>
 
@@ -464,7 +487,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
           <label class="rsvp-label">Message to the host (optional)</label>
           <textarea class="rsvp-textarea" id="rsvpMessage" rows="3" placeholder="Anything you'd like to add..."></textarea>
         </div>
-        <button class="btn-submit-rsvp" onclick="submitRSVP()">Send My RSVP</button>
+        <button class="btn-submit-rsvp" id="rsvpSubmitBtn" onclick="submitRSVP()">Send My RSVP</button>
       </div>
       <div class="rsvp-success" id="rsvpSuccess">
         <div class="rsvp-success-icon">💌</div>
@@ -495,10 +518,14 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
     }}
 
     async function submitRSVP() {{
+      const btn = document.getElementById('rsvpSubmitBtn');
+      if (btn.disabled) return;
       const name = document.getElementById('rsvpName').value.trim();
       const attending = document.getElementById('rsvpAttending').value;
-      if (!name) {{ alert('Please enter your name.'); return; }}
-      if (!attending) {{ alert('Please select whether you are attending.'); return; }}
+      if (!name) {{ showRsvpError('Please enter your name.'); return; }}
+      if (!attending) {{ showRsvpError('Please select whether you are attending.'); return; }}
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
       const payload = {{
         guest_name: name, attending,
         guests_count: parseInt(document.getElementById('rsvpGuests')?.value || 1),
@@ -513,6 +540,17 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
       }} catch(e) {{}}
       document.getElementById('rsvpForm').style.display = 'none';
       document.getElementById('rsvpSuccess').style.display = 'block';
+    }}
+
+    function showRsvpError(msg) {{
+      let err = document.getElementById('rsvpError');
+      if (!err) {{
+        err = document.createElement('div');
+        err.id = 'rsvpError';
+        err.style.cssText = 'color:#f87171;font-size:13px;margin-bottom:12px;padding:10px 14px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.3);border-radius:8px;';
+        document.getElementById('rsvpSubmitBtn').before(err);
+      }}
+      err.textContent = '⚠️ ' + msg;
     }}
   </script>
 </body>
@@ -555,28 +593,42 @@ def build_invite_page(event: dict, event_id: str) -> str:
             date_time_str += f" at {raw_time}"
 
     venue = event.get("venue", "")
-    venue_line = f'<div class="hero-venue">📍 {venue}</div>' if venue else ""
+    venue_e = html.escape(venue)
+    venue_line = f'<div class="hero-venue">📍 {venue_e}</div>' if venue else ""
 
-    date_card = f'<div class="detail-card"><div class="detail-icon">📅</div><div class="detail-label">Date</div><div class="detail-value">{date_formatted}</div></div>' if raw_date else ""
-    venue_card = f'<div class="detail-card"><div class="detail-icon">📍</div><div class="detail-label">Venue</div><div class="detail-value">{venue}</div></div>' if venue else ""
-    time_card = f'<div class="detail-card"><div class="detail-icon">🕐</div><div class="detail-label">Time</div><div class="detail-value">{raw_time}</div></div>' if raw_time else ""
+    date_card = f'<div class="detail-card"><div class="detail-icon">📅</div><div class="detail-label">Date</div><div class="detail-value">{html.escape(date_formatted)}</div></div>' if raw_date else ""
+    venue_card = f'<div class="detail-card"><div class="detail-icon">📍</div><div class="detail-label">Venue</div><div class="detail-value">{venue_e}</div></div>' if venue else ""
+    time_card = f'<div class="detail-card"><div class="detail-icon">🕐</div><div class="detail-label">Time</div><div class="detail-value">{html.escape(raw_time)}</div></div>' if raw_time else ""
 
     msg = event.get("message", "")
     msg_clean = re.sub(r'https?://\S+', '', msg).strip()
     msg_clean = re.sub(r'\[InviteLink\]', '', msg_clean).strip()
     msg_clean = re.sub(r'\n{3,}', '\n\n', msg_clean)
 
+    # RSVP deadline card
+    rsvp_deadline = event.get("rsvp_deadline", "")
+    if rsvp_deadline:
+        try:
+            dl = datetime.strptime(rsvp_deadline, "%Y-%m-%d")
+            deadline_formatted = dl.strftime("%d %B %Y")
+        except Exception:
+            deadline_formatted = rsvp_deadline
+        deadline_card = f'<div class="detail-card"><div class="detail-icon">📬</div><div class="detail-label">RSVP By</div><div class="detail-value">{html.escape(deadline_formatted)}</div></div>'
+    else:
+        deadline_card = ""
+
     return INVITE_TEMPLATE.format(
-        EVENT_NAME=event.get("name", "You're Invited"),
-        EVENT_ID=event_id,
+        EVENT_NAME=html.escape(event.get("name", "You're Invited")),
+        EVENT_ID=html.escape(event_id),
         HERO_GRADIENT=hero_gradient,
         HERO_MEDIA=hero_media,
-        EVENT_DATE_FORMATTED=date_time_str,
+        EVENT_DATE_FORMATTED=html.escape(date_time_str),
         VENUE_LINE=venue_line,
-        MESSAGE_BODY=msg_clean,
+        MESSAGE_BODY=html.escape(msg_clean),
         DATE_CARD=date_card,
         VENUE_CARD=venue_card,
         TIME_CARD=time_card,
+        DEADLINE_CARD=deadline_card,
     )
 
 
@@ -585,6 +637,23 @@ def build_invite_page(event: dict, event_id: str) -> str:
 @app.get("/")
 async def root():
     return FileResponse("../frontend/index.html")
+
+@app.get("/privacy")
+async def privacy():
+    return FileResponse("../frontend/privacy.html")
+
+@app.get("/terms")
+async def terms():
+    return FileResponse("../frontend/terms.html")
+
+@app.get("/manifest.json")
+async def manifest():
+    return FileResponse("../frontend/manifest.json", media_type="application/manifest+json")
+
+@app.get("/sw.js")
+async def service_worker():
+    return FileResponse("../frontend/sw.js", media_type="application/javascript",
+                        headers={"Service-Worker-Allowed": "/"})
 
 @app.get("/health")
 async def health():
@@ -600,17 +669,24 @@ async def get_config():
 
 @app.post("/api/events")
 async def create_event(req: EventCreateRequest, request: Request):
+    ip = get_client_ip(request)
+    if not check_rate_limit(ip, max_calls=20, window_seconds=3600):
+        raise HTTPException(429, detail="Too many events created. Please try again later.")
     events = load_events()
     event_id = str(uuid.uuid4())[:8]
+    # Auth token — returned to frontend, required on checkout to prove ownership
+    auth_token = str(uuid.uuid4()).replace("-", "")
     base = get_base_url(request)
     invite_url = f"{base}/invite/{event_id}"
     events[event_id] = {
         "id": event_id,
+        "auth_token": auth_token,
         "name": req.name,
         "type": req.type,
         "date": req.date,
         "time": req.time,
         "venue": req.venue,
+        "rsvp_deadline": req.rsvp_deadline,
         "template": req.template,
         "message": req.message,
         "sender": req.sender,
@@ -621,7 +697,7 @@ async def create_event(req: EventCreateRequest, request: Request):
         "rsvps": [],
     }
     save_events(events)
-    return {"event_id": event_id, "invite_url": invite_url}
+    return {"event_id": event_id, "invite_url": invite_url, "auth_token": auth_token}
 
 
 @app.get("/invite/{event_id}", response_class=HTMLResponse)
@@ -634,21 +710,58 @@ async def serve_invite(event_id: str):
 
 
 @app.post("/api/upload-media")
-async def upload_media(file: UploadFile = File(...)):
-    """Upload a video or image for use in the invite hero."""
+async def upload_media(file: UploadFile = File(...), request: Request = None):
+    """Upload a video or image — stored in GitHub repo for permanence (survives deploys)."""
+    ip = get_client_ip(request) if request else "unknown"
+    if not check_rate_limit(ip, max_calls=10, window_seconds=3600):
+        raise HTTPException(429, detail="Too many uploads.")
     ext = Path(file.filename).suffix.lower()
     allowed = {".mp4", ".mov", ".webm", ".jpg", ".jpeg", ".png", ".gif", ".webp"}
     if ext not in allowed:
         raise HTTPException(400, detail=f"File type {ext} not supported.")
+
+    data = await file.read()
+    # 50MB limit
+    if len(data) > 50 * 1024 * 1024:
+        raise HTTPException(400, detail="File too large. Maximum size is 50MB.")
+
     safe_name = str(uuid.uuid4())[:8] + ext
+
+    # Try to store in GitHub repo for permanent CDN access
+    if GITHUB_TOKEN:
+        try:
+            import urllib.request as urllib_req, ssl, base64
+            encoded = base64.b64encode(data).decode()
+            body = json.dumps({
+                "message": f"Upload media: {safe_name}",
+                "content": encoded,
+            }).encode()
+            req = urllib_req.Request(
+                f"https://api.github.com/repos/lambosonly25-eng/inviteforge/contents/uploads/{safe_name}",
+                data=body, method="PUT",
+                headers={"Authorization": f"token {GITHUB_TOKEN}",
+                         "Content-Type": "application/json",
+                         "Accept": "application/vnd.github.v3+json"}
+            )
+            ctx = ssl._create_unverified_context()
+            with urllib_req.urlopen(req, context=ctx) as r:
+                resp = json.load(r)
+            cdn_url = resp["content"]["download_url"]
+            return {"url": cdn_url, "filename": safe_name, "storage": "github"}
+        except Exception:
+            pass  # Fall through to local storage
+
+    # Fallback: local disk (ephemeral on Render, works locally)
     dest = UPLOADS_DIR / safe_name
-    with dest.open("wb") as f:
-        shutil.copyfileobj(file.file, f)
-    return {"url": f"/uploads/{safe_name}", "filename": safe_name}
+    dest.write_bytes(data)
+    return {"url": f"/uploads/{safe_name}", "filename": safe_name, "storage": "local"}
 
 
 @app.post("/api/send-test")
-async def send_test(req: TestSendRequest):
+async def send_test(req: TestSendRequest, request: Request):
+    ip = get_client_ip(request)
+    if not check_rate_limit(ip, max_calls=5, window_seconds=60):
+        raise HTTPException(429, detail="Too many test sends. Wait a minute and try again.")
     number = format_number(req.number)
     if not number:
         raise HTTPException(400, detail="Invalid phone number format")
@@ -661,7 +774,10 @@ async def send_test(req: TestSendRequest):
 
 
 @app.post("/api/send-invite")
-async def send_invite(req: InviteRequest):
+async def send_invite(req: InviteRequest, request: Request):
+    ip = get_client_ip(request)
+    if not check_rate_limit(ip, max_calls=300, window_seconds=3600):
+        raise HTTPException(429, detail="Rate limit reached. Please wait before sending more.")
     number = format_number(req.number)
     if not number:
         return {"success": False, "error": "Invalid number format"}
@@ -680,6 +796,10 @@ async def create_checkout(req: CheckoutRequest, request: Request):
     events = load_events()
     if req.event_id not in events:
         raise HTTPException(404, detail="Event not found")
+    # Verify auth token to prevent unauthorized checkout for someone else's event
+    stored_token = events[req.event_id].get("auth_token", "")
+    if stored_token and req.auth_token != stored_token:
+        raise HTTPException(403, detail="Unauthorized")
 
     # Store pending payload in event so webhook can retrieve it
     events[req.event_id]["pending_send"] = {
@@ -767,7 +887,10 @@ async def stripe_webhook(request: Request):
 
 
 @app.post("/api/rsvp/{event_id}")
-async def handle_rsvp(event_id: str, data: RSVPRequest):
+async def handle_rsvp(event_id: str, data: RSVPRequest, request: Request):
+    ip = get_client_ip(request)
+    if not check_rate_limit(ip, max_calls=10, window_seconds=300):
+        raise HTTPException(429, detail="Too many RSVP submissions.")
     events = load_events()
     if event_id not in events:
         raise HTTPException(404, detail="Event not found")
@@ -779,9 +902,19 @@ async def handle_rsvp(event_id: str, data: RSVPRequest):
         "message": data.message,
         "timestamp": datetime.now().isoformat(),
     }
-    events[event_id]["rsvps"].append(rsvp)
+    # Upsert: update existing RSVP for this guest instead of duplicating
+    existing = events[event_id].get("rsvps", [])
+    updated = False
+    for i, r in enumerate(existing):
+        if r.get("guest_name", "").lower() == data.guest_name.lower():
+            existing[i] = rsvp
+            updated = True
+            break
+    if not updated:
+        existing.append(rsvp)
+    events[event_id]["rsvps"] = existing
     save_events(events)
-    return {"success": True, "message": "RSVP received"}
+    return {"success": True, "message": "RSVP received", "updated": updated}
 
 
 @app.get("/api/event/{event_id}/rsvps")
