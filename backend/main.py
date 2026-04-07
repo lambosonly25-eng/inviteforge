@@ -1119,21 +1119,23 @@ NOT_FOUND_PAGE = """<!DOCTYPE html>
 </body>
 </html>"""
 
-@app.get("/invite/{event_id}", response_class=HTMLResponse)
+@app.get("/invite/{event_id}")
 async def serve_invite(event_id: str, name: str = ""):
     try:
         events = load_events()
         event = events.get(event_id)
         if not event:
             return HTMLResponse(NOT_FOUND_PAGE, status_code=404)
+        html_content = build_invite_page(event, event_id)
         return HTMLResponse(
-            build_invite_page(event, event_id),
+            html_content,
             headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}
         )
     except Exception as _exc:
         import traceback
-        print(f"[ERROR] serve_invite({event_id}): {_exc}\n{traceback.format_exc()}")
-        raise
+        tb = traceback.format_exc()
+        print(f"[ERROR] serve_invite({event_id}): {_exc}\n{tb}")
+        return JSONResponse({"error": str(_exc), "traceback": tb}, status_code=500)
 
 
 @app.get("/api/debug-invite/{event_id}")
