@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>InviteForge — Create Your Invitation</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23c9a96e'/><text x='50' y='68' font-size='54' text-anchor='middle' fill='%230a0e1a' font-family='serif' font-weight='bold'>IF</text></svg>"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#c9a96e"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="InviteForge"/>
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%23c9a96e'/><text x='256' y='340' font-size='260' text-anchor='middle' fill='%230a0e1a' font-family='serif' font-weight='bold'>IF</text></svg>"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <!-- SheetJS — reads Excel, CSV, ODS, Numbers exports -->
@@ -270,6 +276,7 @@
   <!-- HEADER -->
   <header class="app-header">
     <a href="/" style="text-decoration:none;"><div class="logo">Invite<span>Forge</span></div></a>
+    <div id="testModeBadge" style="display:none;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;font-size:11px;font-weight:700;letter-spacing:1px;padding:5px 12px;border-radius:100px;">TEST MODE</div>
     <div class="progress-bar" id="progressBar">
       <div class="progress-step" style="flex-direction:column;align-items:flex-start;">
         <div style="display:flex;align-items:center;width:100%;"><div class="step-circle active" id="sc1">1</div><div class="step-line" id="sl1"></div></div>
@@ -337,6 +344,11 @@
         <div class="form-group">
           <label class="form-label">Venue</label>
           <input class="form-input" id="eventVenue" placeholder="e.g. The Grand Hotel, Manchester" oninput="updatePreview()"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">RSVP Deadline (optional)</label>
+          <input class="form-input" id="rsvpDeadline" type="date" onchange="updatePreview()"/>
+          <div style="font-size:12px;color:var(--grey);margin-top:6px;">If set, this date shows on your invite page so guests know when to respond by.</div>
         </div>
         <div class="form-group">
           <label class="form-label">Upload Event Video or Photo (optional)</label>
@@ -571,9 +583,14 @@
           <div class="dash-stat"><div class="num" id="dAttending">0</div><div class="label">Attending</div></div>
           <div class="dash-stat"><div class="num" id="dFailed">0</div><div class="label">Failed</div></div>
         </div>
+        <div id="dashInviteLink" style="display:none;background:rgba(201,169,110,0.06);border:1px solid rgba(201,169,110,0.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div style="font-size:13px;color:var(--grey);">Your invite page: <span id="dashInviteUrl" style="color:var(--gold);font-weight:600;word-break:break-all;"></span></div>
+          <button onclick="copyInviteLink()" style="flex-shrink:0;padding:8px 16px;background:rgba(201,169,110,0.15);border:1px solid rgba(201,169,110,0.4);color:var(--gold);border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;" id="copyLinkBtn">📋 Copy Link</button>
+        </div>
         <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
           <button onclick="sendReminders()" style="padding:10px 20px;background:rgba(201,169,110,0.1);border:1px solid rgba(201,169,110,0.3);color:var(--gold);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">🔔 Send Reminders to Non-Responders</button>
           <button onclick="exportCSV()" style="padding:10px 20px;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--white);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">📥 Export CSV</button>
+          <button onclick="startNewEvent()" style="padding:10px 20px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);color:var(--green);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">✨ New Event</button>
         </div>
         <div style="border-radius:12px;border:1px solid var(--border);overflow:hidden;">
           <table class="dashboard-table">
@@ -623,6 +640,7 @@
       mediaUrl: '',
       eventId: sessionStorage.getItem('if_event_id') || localStorage.getItem('if_event_id') || '',
       inviteUrl: sessionStorage.getItem('if_invite_url') || localStorage.getItem('if_invite_url') || '',
+      authToken: sessionStorage.getItem('if_auth_token') || localStorage.getItem('if_auth_token') || '',
       sentCount: null,
       failedCount: null,
       testMode: true,   // updated from /api/config on load
@@ -631,6 +649,8 @@
     // Load config from backend
     fetch('/api/config').then(r => r.json()).then(c => {
       state.testMode = c.test_mode;
+      const badge = document.getElementById('testModeBadge');
+      if (badge) badge.style.display = c.test_mode ? 'block' : 'none';
     }).catch(() => {});
 
     // ── SMS CHARACTER COUNTER ──
@@ -726,6 +746,11 @@
     // ── NAVIGATION ──
     function goStep(n) {
       document.getElementById('step' + state.step).classList.remove('active');
+      // Stop dashboard polling when leaving step 6
+      if (state.step === 6 && n !== 6 && dashboardPollTimer) {
+        clearInterval(dashboardPollTimer);
+        dashboardPollTimer = null;
+      }
       state.step = n;
       document.getElementById('step' + n).classList.add('active');
       document.getElementById('stepLabel').textContent = n;
@@ -756,14 +781,6 @@
       document.getElementById('prevInviteHeader').style.background = tc.bg;
       document.getElementById('prevEventName').style.color = tc.color;
       document.getElementById('sumTemplate').textContent = t.charAt(0).toUpperCase() + t.slice(1);
-    }
-
-    // ── TONE SELECTION ──
-    function selectTone(t) {
-      document.querySelectorAll('.tone-option').forEach(el => el.classList.remove('selected'));
-      document.getElementById('tone-' + t).classList.add('selected');
-      state.tone = t;
-      generateMessage();
     }
 
     function generateMessage() {
@@ -1039,6 +1056,7 @@
               date: document.getElementById('eventDate').value || '',
               time: document.getElementById('eventTime').value || '',
               venue: document.getElementById('eventVenue').value || '',
+              rsvp_deadline: document.getElementById('rsvpDeadline')?.value || '',
               template: state.template,
               message: document.getElementById('messageText').value || '',
               sender: document.getElementById('senderName').value || 'InviteForge',
@@ -1048,10 +1066,13 @@
           const data = await res.json();
           state.eventId = data.event_id;
           state.inviteUrl = data.invite_url;
+          state.authToken = data.auth_token || '';
           sessionStorage.setItem('if_event_id', data.event_id);
           sessionStorage.setItem('if_invite_url', data.invite_url);
+          sessionStorage.setItem('if_auth_token', data.auth_token || '');
           localStorage.setItem('if_event_id', data.event_id);
           localStorage.setItem('if_invite_url', data.invite_url);
+          localStorage.setItem('if_auth_token', data.auth_token || '');
 
           const iframeSrc = data.invite_url + '?name=' + encodeURIComponent(sampleName);
           document.getElementById('inviteFrame').src = iframeSrc;
@@ -1126,8 +1147,23 @@
       }
     }
 
+    function showSendError(msg) {
+      let err = document.getElementById('sendError');
+      if (!err) {
+        err = document.createElement('div');
+        err.id = 'sendError';
+        err.style.cssText = 'color:#f87171;font-size:13px;margin-bottom:12px;padding:12px 16px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.3);border-radius:10px;';
+        document.getElementById('sendAllBtn').before(err);
+      }
+      err.textContent = '⚠️ ' + msg;
+      err.style.display = 'block';
+    }
+
     // ── SEND ALL ──
     async function sendAll() {
+      const errEl = document.getElementById('sendError');
+      if (errEl) errEl.style.display = 'none';
+
       // Deduplicate by phone number
       const seen = new Set();
       const valid = state.guests.filter(g => {
@@ -1137,13 +1173,18 @@
         return true;
       });
       if (!valid.length) {
-        alert('No valid guests to send to. Please go back to Step 4 and add guests with valid UK phone numbers.');
+        showSendError('No valid guests to send to. Go back to Step 4 and check your guest list.');
         return;
       }
 
       const sender = document.getElementById('senderName').value || '';
       if (!sender) {
-        alert('Please go back to Step 2 and enter a sender name (e.g. "SarahWeds").');
+        showSendError('No sender name set. Go back to Step 2 and enter a sender name (e.g. "SarahWeds").');
+        return;
+      }
+
+      // Confirm before sending in test mode (production has Stripe as the gate)
+      if (state.testMode && !confirm(`You're about to send invitations to ${valid.length} guest${valid.length > 1 ? 's' : ''}. Continue?`)) {
         return;
       }
 
@@ -1158,6 +1199,7 @@
             headers: {'Content-Type':'application/json'},
             body: JSON.stringify({
               event_id: state.eventId,
+              auth_token: state.authToken,
               guests: valid.map(g => ({name: g.name, number: g.number})),
               message: document.getElementById('messageText').value || '',
               sender,
@@ -1234,7 +1276,14 @@
       if (state.eventId) {
         localStorage.setItem('if_event_id', state.eventId);
         if (state.inviteUrl) localStorage.setItem('if_invite_url', state.inviteUrl);
+        if (state.authToken) localStorage.setItem('if_auth_token', state.authToken);
         if (state.guests.length > 0) localStorage.setItem('if_guests_' + state.eventId, JSON.stringify(state.guests));
+      }
+      // Show invite link bar
+      if (state.inviteUrl) {
+        const bar = document.getElementById('dashInviteLink');
+        const urlEl = document.getElementById('dashInviteUrl');
+        if (bar && urlEl) { bar.style.display = 'flex'; urlEl.textContent = state.inviteUrl; }
       }
       renderDashboardTable({});
       // Start live RSVP polling
@@ -1381,6 +1430,57 @@
       }
     }
 
+    // ── COPY INVITE LINK ──
+    function copyInviteLink() {
+      const url = state.inviteUrl;
+      if (!url) return;
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = document.getElementById('copyLinkBtn');
+        if (btn) { btn.textContent = '✅ Copied!'; setTimeout(() => btn.textContent = '📋 Copy Link', 2000); }
+      }).catch(() => {
+        const el = document.getElementById('dashInviteUrl');
+        if (el) { const range = document.createRange(); range.selectNode(el); window.getSelection().removeAllRanges(); window.getSelection().addRange(range); }
+      });
+    }
+
+    // ── START NEW EVENT ──
+    function startNewEvent() {
+      if (!confirm('Start a brand new event? Your current dashboard will remain saved in your browser.')) return;
+      // Clear session state only (keep localStorage so they can return to dashboard)
+      sessionStorage.clear();
+      // Reset in-memory state
+      state.eventId = ''; state.inviteUrl = ''; state.authToken = '';
+      state.guests = []; state.sentCount = null; state.failedCount = null;
+      // Clear form fields
+      ['eventName','eventDate','eventTime','eventVenue','rsvpDeadline','senderName','messageText','guestPaste','testNumber'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      document.getElementById('guestResults').style.display = 'none';
+      document.getElementById('prevStats').style.display = 'none';
+      if (dashboardPollTimer) { clearInterval(dashboardPollTimer); dashboardPollTimer = null; }
+      goStep(1);
+    }
+
+    // ── TONE CHANGE — warn if message has been manually edited ──
+    let _toneGenerated = false; // set to true after first generate, to detect manual edits
+    const _selectToneOrig = selectTone;
+    function selectTone(t) {
+      const currentMsg = (document.getElementById('messageText')?.value || '').trim();
+      const wasGenerated = Object.values(toneMessages).some(tmpl => {
+        const eventName = document.getElementById('eventName')?.value || '';
+        const eventType = document.getElementById('eventType')?.value || 'event';
+        const rendered = tmpl.replace('{HOST}', eventName).replace('{TYPE}', eventType.toLowerCase()).trim();
+        return currentMsg === rendered;
+      });
+      if (currentMsg && !wasGenerated) {
+        if (!confirm('Changing tone will replace your custom message. Continue?')) return;
+      }
+      document.querySelectorAll('.tone-option').forEach(el => el.classList.remove('selected'));
+      document.getElementById('tone-' + t).classList.add('selected');
+      state.tone = t;
+      generateMessage();
+    }
+
     // ── SENDER NAME WARNING ──
     function checkSenderName() {
       const val = (document.getElementById('senderName')?.value || '').toLowerCase();
@@ -1446,6 +1546,11 @@
         }, 100);
       }
     })();
+
+    // ── SERVICE WORKER REGISTRATION ──
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
 
     // ── DRAG & DROP — prevent browser from navigating to dropped files ──
     // Block default drag behaviour on the whole page
