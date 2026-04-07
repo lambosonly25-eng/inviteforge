@@ -3,7 +3,7 @@ InviteForge Backend — FastAPI
 Handles event creation, invite pages, SMS sending, RSVP tracking, payments
 """
 
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -14,6 +14,9 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote as urlquote
 from twilio.rest import Client
+
+import database as db
+import auth as auth_module
 
 # Load .env file if present
 _env_path = Path(__file__).parent / ".env"
@@ -149,51 +152,20 @@ def send_magic_link_email(event: dict, event_id: str, auth_token: str) -> bool:
     return send_email(email, subject, html_body)
 
 # ── EVENT STORAGE ──
-EVENTS_FILE  = Path("events.json")
 GIST_ID      = os.getenv("GIST_ID", "")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 
+# Wire database module with credentials and initialise
+db.configure(GIST_ID, GITHUB_TOKEN)
+db.init_db()
+db.load_from_gist()   # Restore persisted data on startup
+
+# Drop-in wrappers — all existing code calls these unchanged
 def load_events() -> dict:
-    if GIST_ID and GITHUB_TOKEN:
-        try:
-            import urllib.request
-            req = urllib.request.Request(
-                f"https://api.github.com/gists/{GIST_ID}",
-                headers={"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
-            )
-            import ssl
-            ctx = ssl._create_unverified_context()
-            with urllib.request.urlopen(req, context=ctx) as r:
-                data = json.load(r)
-            return json.loads(data["files"]["events.json"]["content"])
-        except Exception:
-            pass
-    if EVENTS_FILE.exists():
-        try:
-            return json.loads(EVENTS_FILE.read_text())
-        except Exception:
-            return {}
-    return {}
+    return db.load_events()
 
 def save_events(events: dict):
-    content = json.dumps(events, indent=2, default=str)
-    if GIST_ID and GITHUB_TOKEN:
-        try:
-            import urllib.request, ssl
-            body = json.dumps({"files": {"events.json": {"content": content}}}).encode()
-            req = urllib.request.Request(
-                f"https://api.github.com/gists/{GIST_ID}",
-                data=body, method="PATCH",
-                headers={"Authorization": f"token {GITHUB_TOKEN}", "Content-Type": "application/json",
-                         "Accept": "application/vnd.github.v3+json"}
-            )
-            ctx = ssl._create_unverified_context()
-            with urllib.request.urlopen(req, context=ctx):
-                pass
-            return
-        except Exception:
-            pass
-    EVENTS_FILE.write_text(content)
+    db.save_events(events)
 
 # ── MODELS ──
 class TestSendRequest(BaseModel):
@@ -786,12 +758,14 @@ async def create_event(req: EventCreateRequest, request: Request):
         raise HTTPException(429, detail="Too many events created. Please try again later.")
     events = load_events()
     event_id = str(uuid.uuid4())[:8]
-    # Auth token — returned to frontend, required on checkout to prove ownership
     auth_token = str(uuid.uuid4()).replace("-", "")
     base = get_base_url(request)
     invite_url = f"{base}/invite/{event_id}"
+    # Link event to logged-in user if JWT present
+    user_id = auth_module.get_current_user_id(request)
     events[event_id] = {
         "id": event_id,
+        "user_id": user_id,
         "auth_token": auth_token,
         "name": req.name,
         "type": req.type,
@@ -1201,11 +1175,9 @@ async def login(req: LoginRequest, request: Request):
     if not email or "@" not in email:
         raise HTTPException(400, detail="Invalid email address.")
     events = load_events()
-    # Find all events belonging to this email
     matched = [(eid, ev) for eid, ev in events.items()
                if ev.get("host_email", "").strip().lower() == email]
     if not matched:
-        # Return success anyway — don't reveal whether email exists
         return {"success": True, "message": "If that email matches an event, a link is on its way."}
     sent = 0
     for event_id, ev in matched:
@@ -1213,6 +1185,81 @@ async def login(req: LoginRequest, request: Request):
         if auth_token and send_magic_link_email(ev, event_id, auth_token):
             sent += 1
     return {"success": True, "message": "If that email matches an event, a link is on its way.", "sent": sent}
+
+
+# ── ACCOUNT AUTH ──
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+
+class AccountLoginRequest(BaseModel):
+    email: str
+    password: str
+
+@app.post("/api/auth/register")
+async def register(req: RegisterRequest, request: Request):
+    ip = get_client_ip(request)
+    if not check_rate_limit(ip, max_calls=10, window_seconds=3600):
+        raise HTTPException(429, detail="Too many attempts. Try again later.")
+    email = req.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(400, detail="Invalid email address.")
+    if len(req.password) < 8:
+        raise HTTPException(400, detail="Password must be at least 8 characters.")
+    if db.get_user_by_email(email):
+        raise HTTPException(409, detail="An account with that email already exists.")
+    password_hash = auth_module.hash_password(req.password)
+    user = db.create_user(email, password_hash)
+    token = auth_module.create_token(user["id"], user["email"])
+    return {"token": token, "user": {"id": user["id"], "email": user["email"]}}
+
+
+@app.post("/api/auth/login")
+async def account_login(req: AccountLoginRequest, request: Request):
+    ip = get_client_ip(request)
+    if not check_rate_limit(ip, max_calls=10, window_seconds=300):
+        raise HTTPException(429, detail="Too many login attempts. Wait 5 minutes.")
+    email = req.email.strip().lower()
+    user = db.get_user_by_email(email)
+    if not user or not auth_module.verify_password(req.password, user["password_hash"]):
+        raise HTTPException(401, detail="Incorrect email or password.")
+    token = auth_module.create_token(user["id"], user["email"])
+    return {"token": token, "user": {"id": user["id"], "email": user["email"]}}
+
+
+@app.get("/api/auth/me")
+async def get_me(request: Request):
+    user_id = auth_module.get_current_user_id(request)
+    if not user_id:
+        raise HTTPException(401, detail="Not authenticated")
+    user = db.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(404, detail="User not found")
+    return {"id": user["id"], "email": user["email"], "created_at": user["created_at"]}
+
+
+@app.get("/api/user/events")
+async def get_user_events(request: Request):
+    user_id = auth_module.get_current_user_id(request)
+    if not user_id:
+        raise HTTPException(401, detail="Not authenticated")
+    events = db.get_events_for_user(user_id)
+    return {
+        "events": [
+            {
+                "event_id":   e.get("id"),
+                "name":       e.get("name"),
+                "date":       e.get("date"),
+                "venue":      e.get("venue"),
+                "invite_url": e.get("invite_url"),
+                "rsvp_count": len(e.get("rsvps", [])),
+                "sent":       e.get("sent", False),
+                "created":    e.get("created"),
+            }
+            for e in events
+        ]
+    }
 
 
 @app.post("/api/resend-link/{event_id}")
