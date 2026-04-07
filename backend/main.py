@@ -480,7 +480,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
     <div class="hero-media" id="heroMedia">{HERO_MEDIA}</div>
     <div class="hero-gradient"></div>
     <div class="hero-content">
-      <div class="invite-tag">You're Invited</div>
+      <div class="invite-tag">{INVITE_TAG}</div>
       <h1>{EVENT_NAME}</h1>
       <div class="hero-divider"></div>
       <div class="hero-date">{EVENT_DATE_FORMATTED}</div>
@@ -950,8 +950,28 @@ def build_invite_page(event: dict, event_id: str) -> str:
         deadline_card = ""
 
     event_name_safe = html.escape(event.get("name", "You're Invited"))
+
+    # Build a human-readable event type tag for the hero badge
+    event_type_raw = event.get("type", "").strip().lower()
+    type_labels = {
+        "wedding":      "Wedding Invitation",
+        "birthday":     "Birthday Celebration",
+        "party":        "Party Invitation",
+        "corporate":    "Corporate Event",
+        "anniversary":  "Anniversary Celebration",
+        "baby shower":  "Baby Shower",
+        "graduation":   "Graduation Celebration",
+        "engagement":   "Engagement Party",
+        "christening":  "Christening",
+        "funeral":      "Memorial Service",
+        "conference":   "Conference",
+        "gala":         "Gala Evening",
+    }
+    invite_tag = type_labels.get(event_type_raw, "You're Invited")
+
     return INVITE_TEMPLATE.format(
         EVENT_NAME=event_name_safe,
+        INVITE_TAG=html.escape(invite_tag),
         EVENT_ID=html.escape(event_id),
         HERO_GRADIENT=hero_gradient,
         HERO_MEDIA=hero_media,
