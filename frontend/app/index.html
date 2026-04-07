@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>InviteForge — Create Your Invitation</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23c9a96e'/><text x='50' y='68' font-size='54' text-anchor='middle' fill='%230a0e1a' font-family='serif' font-weight='bold'>IF</text></svg>"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <!-- SheetJS — reads Excel, CSV, ODS, Numbers exports -->
@@ -51,6 +52,7 @@
     .step-circle.done { border-color: var(--green); background: var(--green); color: var(--navy); }
     .step-line { flex: 1; height: 2px; background: var(--border); margin: 0 6px; transition: background 0.3s; }
     .step-line.done { background: var(--green); }
+    .step-lbl { font-size: 9px; color: var(--grey); text-align: center; margin-top: 3px; width: 32px; flex-shrink: 0; white-space: nowrap; letter-spacing: 0; }
 
     /* MAIN LAYOUT */
     .app-body { display: grid; grid-template-columns: 1fr 380px; min-height: calc(100vh - 73px); }
@@ -269,28 +271,29 @@
   <header class="app-header">
     <a href="/" style="text-decoration:none;"><div class="logo">Invite<span>Forge</span></div></a>
     <div class="progress-bar" id="progressBar">
-      <div class="progress-step">
-        <div class="step-circle active" id="sc1">1</div>
-        <div class="step-line" id="sl1"></div>
+      <div class="progress-step" style="flex-direction:column;align-items:flex-start;">
+        <div style="display:flex;align-items:center;width:100%;"><div class="step-circle active" id="sc1">1</div><div class="step-line" id="sl1"></div></div>
+        <div class="step-lbl">Event</div>
       </div>
-      <div class="progress-step">
-        <div class="step-circle" id="sc2">2</div>
-        <div class="step-line" id="sl2"></div>
+      <div class="progress-step" style="flex-direction:column;align-items:flex-start;">
+        <div style="display:flex;align-items:center;width:100%;"><div class="step-circle" id="sc2">2</div><div class="step-line" id="sl2"></div></div>
+        <div class="step-lbl">Design</div>
       </div>
-      <div class="progress-step">
-        <div class="step-circle" id="sc3">3</div>
-        <div class="step-line" id="sl3"></div>
+      <div class="progress-step" style="flex-direction:column;align-items:flex-start;">
+        <div style="display:flex;align-items:center;width:100%;"><div class="step-circle" id="sc3">3</div><div class="step-line" id="sl3"></div></div>
+        <div class="step-lbl">Message</div>
       </div>
-      <div class="progress-step">
-        <div class="step-circle" id="sc4">4</div>
-        <div class="step-line" id="sl4"></div>
+      <div class="progress-step" style="flex-direction:column;align-items:flex-start;">
+        <div style="display:flex;align-items:center;width:100%;"><div class="step-circle" id="sc4">4</div><div class="step-line" id="sl4"></div></div>
+        <div class="step-lbl">Guests</div>
       </div>
-      <div class="progress-step">
-        <div class="step-circle" id="sc5">5</div>
-        <div class="step-line" id="sl5"></div>
+      <div class="progress-step" style="flex-direction:column;align-items:flex-start;">
+        <div style="display:flex;align-items:center;width:100%;"><div class="step-circle" id="sc5">5</div><div class="step-line" id="sl5"></div></div>
+        <div class="step-lbl">Preview</div>
       </div>
-      <div class="progress-step">
-        <div class="step-circle" id="sc6">6</div>
+      <div class="progress-step" style="flex-direction:column;align-items:flex-start;flex:0;">
+        <div style="display:flex;align-items:center;"><div class="step-circle" id="sc6">6</div></div>
+        <div class="step-lbl">Live</div>
       </div>
     </div>
     <div style="font-size:13px;color:var(--grey);">Step <span id="stepLabel">1</span> of 6</div>
@@ -525,10 +528,18 @@
         <div class="form-group">
           <label class="form-label">Test Send (recommended)</label>
           <div style="display:flex;gap:10px;">
-            <input class="form-input" id="testNumber" placeholder="Your mobile number (07xxx)" style="flex:1;"/>
+            <input class="form-input" id="testNumber" placeholder="Your mobile number (07xxx)" style="flex:1;" onblur="normaliseTestNumber(this)"/>
             <button onclick="sendTest()" style="padding:14px 24px;background:rgba(201,169,110,0.1);border:1px solid rgba(201,169,110,0.3);color:var(--gold);border-radius:10px;cursor:pointer;font-weight:600;white-space:nowrap;">Send Test</button>
           </div>
           <div id="testResult" style="font-size:13px;margin-top:8px;"></div>
+        </div>
+
+        <!-- International number warning -->
+        <div id="intlWarning" style="display:none;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:13px;color:#f59e0b;"></div>
+
+        <!-- Payment cancelled banner -->
+        <div id="paymentCancelledBanner" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:14px;color:#f87171;">
+          ❌ Payment cancelled — your event is still saved. Try again when you're ready.
         </div>
 
         <!-- Cost breakdown -->
@@ -581,7 +592,7 @@
       <div class="preview-label">Live Preview</div>
       <div class="preview-phone">
         <div class="preview-sms">
-          <div class="sender" id="prevSender">CarmelJames</div>
+          <div class="sender" id="prevSender">YourEventName</div>
           <div id="prevMessage">Fill in your event details to see a preview of your SMS here.</div>
         </div>
       </div>
@@ -610,8 +621,8 @@
       tone: 'formal', message: '',
       guests: [], // [{name, number, valid}]
       mediaUrl: '',
-      eventId: sessionStorage.getItem('if_event_id') || '',
-      inviteUrl: sessionStorage.getItem('if_invite_url') || '',
+      eventId: sessionStorage.getItem('if_event_id') || localStorage.getItem('if_event_id') || '',
+      inviteUrl: sessionStorage.getItem('if_invite_url') || localStorage.getItem('if_invite_url') || '',
       sentCount: null,
       failedCount: null,
       testMode: true,   // updated from /api/config on load
@@ -949,7 +960,9 @@
         ${invalid ? `<div class="guest-count-item"><div class="num" style="color:#f59e0b">${invalid}</div><div class="label">Check Numbers</div></div>` : ''}
       `;
       const tbody = document.getElementById('guestTableBody');
-      tbody.innerHTML = state.guests.slice(0, 50).map((g, i) => `
+      const showAll = tbody.dataset.showAll === 'true';
+      const displayGuests = showAll ? state.guests : state.guests.slice(0, 50);
+      tbody.innerHTML = displayGuests.map((g, i) => `
         <tr>
           <td style="color:var(--grey)">${i + 1}</td>
           <td>${g.name}</td>
@@ -958,13 +971,18 @@
         </tr>
       `).join('');
       if (state.guests.length > 50) {
-        tbody.innerHTML += `<tr><td colspan="4" style="color:var(--grey);text-align:center;padding:12px;">...and ${state.guests.length - 50} more</td></tr>`;
+        tbody.innerHTML += `<tr><td colspan="4" style="text-align:center;padding:12px;">
+          <button onclick="toggleGuestTableAll(this)" style="background:none;border:1px solid var(--border);color:var(--gold);padding:6px 16px;border-radius:6px;cursor:pointer;font-size:12px;">
+            ${showAll ? '▲ Show fewer' : `▼ Show all ${state.guests.length} guests`}
+          </button>
+        </td></tr>`;
       }
       document.getElementById('ps-guests').textContent = state.guests.length;
       document.getElementById('ps-numbers').textContent = valid;
       document.getElementById('ps-missing').textContent = invalid;
       document.getElementById('ps-cost').textContent = '£' + (50 + valid * 0.30).toFixed(2);
       document.getElementById('sendCount').textContent = valid;
+      checkInternationalGuests();
     }
 
     // ── MEDIA UPLOAD ──
@@ -1006,50 +1024,63 @@
         }
       }
 
-      // Create/update the event on backend to get a real invite URL
-      try {
-        document.getElementById('inviteCreating').style.display = 'block';
-        document.getElementById('invitePreviewWrap').style.display = 'none';
-        const res = await fetch('/api/events', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({
-            name: document.getElementById('eventName').value || 'Your Event',
-            type: document.getElementById('eventType').value || '',
-            date: document.getElementById('eventDate').value || '',
-            time: document.getElementById('eventTime').value || '',
-            venue: document.getElementById('eventVenue').value || '',
-            template: state.template,
-            message: document.getElementById('messageText').value || '',
-            sender: document.getElementById('senderName').value || 'CarmelJames',
-            media_url: state.mediaUrl || '',
-          })
-        });
-        const data = await res.json();
-        state.eventId = data.event_id;
-        state.inviteUrl = data.invite_url;
-        sessionStorage.setItem('if_event_id', data.event_id);
-        sessionStorage.setItem('if_invite_url', data.invite_url);
+      // Create the event on backend — only once. If we already have an eventId, just reload the iframe.
+      const sampleName = state.guests.length > 0 ? state.guests[0].name : 'Guest';
+      if (!state.eventId) {
+        try {
+          document.getElementById('inviteCreating').style.display = 'block';
+          document.getElementById('invitePreviewWrap').style.display = 'none';
+          const res = await fetch('/api/events', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+              name: document.getElementById('eventName').value || 'Your Event',
+              type: document.getElementById('eventType').value || '',
+              date: document.getElementById('eventDate').value || '',
+              time: document.getElementById('eventTime').value || '',
+              venue: document.getElementById('eventVenue').value || '',
+              template: state.template,
+              message: document.getElementById('messageText').value || '',
+              sender: document.getElementById('senderName').value || 'InviteForge',
+              media_url: state.mediaUrl || '',
+            })
+          });
+          const data = await res.json();
+          state.eventId = data.event_id;
+          state.inviteUrl = data.invite_url;
+          sessionStorage.setItem('if_event_id', data.event_id);
+          sessionStorage.setItem('if_invite_url', data.invite_url);
+          localStorage.setItem('if_event_id', data.event_id);
+          localStorage.setItem('if_invite_url', data.invite_url);
 
-        // Load iframe with a sample guest name
-        const sampleName = state.guests.length > 0 ? state.guests[0].name : 'Guest';
-        const iframeSrc = data.invite_url + '?name=' + encodeURIComponent(sampleName);
+          const iframeSrc = data.invite_url + '?name=' + encodeURIComponent(sampleName);
+          document.getElementById('inviteFrame').src = iframeSrc;
+          document.getElementById('inviteOpenBtn').href = iframeSrc;
+          document.getElementById('inviteCreating').style.display = 'none';
+          document.getElementById('invitePreviewWrap').style.display = 'block';
+
+          const sender = document.getElementById('senderName').value || 'InviteForge';
+          const msg = document.getElementById('messageText').value || '';
+          const msgWithUrl = msg.replace(/https?:\/\/\S+/g, data.invite_url) || msg + '\n' + data.invite_url;
+          const smsPreview = msgWithUrl.replace('[Name]', sampleName).substring(0, 160);
+          document.getElementById('smsPrevSender').textContent = sender;
+          document.getElementById('smsPrevBody').textContent = smsPreview + (msgWithUrl.length > 160 ? '...' : '');
+        } catch(e) {
+          document.getElementById('inviteCreating').innerHTML = '<div style="color:#f59e0b;padding:24px;">⚠️ Could not create invite — is the backend running?</div>';
+        }
+      } else {
+        // Event already created — just reload iframe with existing URL
+        const iframeSrc = state.inviteUrl + '?name=' + encodeURIComponent(sampleName);
         document.getElementById('inviteFrame').src = iframeSrc;
         document.getElementById('inviteOpenBtn').href = iframeSrc;
         document.getElementById('inviteCreating').style.display = 'none';
         document.getElementById('invitePreviewWrap').style.display = 'block';
-
-        // Update SMS preview
         const sender = document.getElementById('senderName').value || 'InviteForge';
         const msg = document.getElementById('messageText').value || '';
-        // Inject real invite URL into message
-        const msgWithUrl = msg.replace(/https?:\/\/\S+/g, data.invite_url)
-          || msg + '\n' + data.invite_url;
+        const msgWithUrl = msg.replace(/https?:\/\/\S+/g, state.inviteUrl) || msg + '\n' + state.inviteUrl;
         const smsPreview = msgWithUrl.replace('[Name]', sampleName).substring(0, 160);
         document.getElementById('smsPrevSender').textContent = sender;
         document.getElementById('smsPrevBody').textContent = smsPreview + (msgWithUrl.length > 160 ? '...' : '');
-      } catch(e) {
-        document.getElementById('inviteCreating').innerHTML = '<div style="color:#f59e0b;padding:24px;">⚠️ Could not create invite — is the backend running?</div>';
       }
     }
 
@@ -1083,7 +1114,7 @@
           body: JSON.stringify({
             number: num,
             message: buildSms('You'),
-            sender: document.getElementById('senderName').value || 'CarmelJames'
+            sender: document.getElementById('senderName').value || 'InviteForge'
           })
         });
         const data = await res.json();
@@ -1134,6 +1165,11 @@
           });
           const data = await res.json();
           if (data.checkout_url) {
+            // Persist state before Stripe redirect — page will fully reload on return
+            sessionStorage.setItem('if_guests', JSON.stringify(valid));
+            localStorage.setItem('if_guests_' + state.eventId, JSON.stringify(valid));
+            localStorage.setItem('if_sender', sender);
+            localStorage.setItem('if_message', document.getElementById('messageText').value || '');
             window.location.href = data.checkout_url;
             return;
           }
@@ -1194,6 +1230,12 @@
     function buildDashboard() {
       document.getElementById('dSent').textContent = state.sentCount != null ? state.sentCount : state.guests.filter(g=>g.valid).length;
       document.getElementById('dFailed').textContent = state.failedCount != null ? state.failedCount : 0;
+      // Persist dashboard state to localStorage so user can return to it
+      if (state.eventId) {
+        localStorage.setItem('if_event_id', state.eventId);
+        if (state.inviteUrl) localStorage.setItem('if_invite_url', state.inviteUrl);
+        if (state.guests.length > 0) localStorage.setItem('if_guests_' + state.eventId, JSON.stringify(state.guests));
+      }
       renderDashboardTable({});
       // Start live RSVP polling
       if (dashboardPollTimer) clearInterval(dashboardPollTimer);
@@ -1219,9 +1261,10 @@
         document.getElementById('dRsvp').textContent = data.total || 0;
         document.getElementById('dAttending').textContent = data.attending || 0;
         // Mark guests who have responded so reminder blast skips them
+        // Also store full RSVP data on guest object (needed for CSV export)
         (data.rsvps || []).forEach(r => {
           const g = validGuests.find(g => g.name.toLowerCase() === r.guest_name.toLowerCase());
-          if (g) g.rsvpReceived = true;
+          if (g) { g.rsvpReceived = true; g.rsvp = r; }
         });
         renderDashboardTable(rsvpMap);
       } catch(e) {}
@@ -1258,10 +1301,11 @@
       const nonResponders = state.guests.filter(g => g.valid && !g.rsvpReceived);
       if (!nonResponders.length) { alert('Everyone has responded!'); return; }
       if (!confirm(`Send a reminder to ${nonResponders.length} guests who haven't responded yet?`)) return;
-      const sender = document.getElementById('senderName')?.value || 'CarmelJames';
+      const sender = document.getElementById('senderName')?.value || document.getElementById('eventName')?.value?.replace(/\s+/g,'').substring(0,11) || 'InviteForge';
       let sent = 0;
       for (const g of nonResponders) {
-        const reminderMsg = `Hi ${g.name}, just a gentle reminder — please RSVP for the event when you get a moment! ${state.inviteUrl}?name=${encodeURIComponent(g.name)}`;
+        const eventName = document.getElementById('eventName')?.value || 'our event';
+        const reminderMsg = `Hi ${g.name}, just a friendly reminder to RSVP for ${eventName} — we'd love to hear from you! ${state.inviteUrl}?name=${encodeURIComponent(g.name)}`;
         try {
           const res = await fetch('/api/send-invite', {
             method: 'POST', headers: {'Content-Type':'application/json'},
@@ -1310,6 +1354,33 @@
       updateMessagePreview();
     }
 
+    // ── TEST NUMBER +44 AUTO-FORMAT ──
+    function normaliseTestNumber(input) {
+      const cleaned = input.value.replace(/\s|-|\(|\)/g, '');
+      if (/^07\d{9}$/.test(cleaned)) input.value = '+44' + cleaned.slice(1);
+      else if (/^7\d{9}$/.test(cleaned)) input.value = '+44' + cleaned;
+    }
+
+    // ── GUEST TABLE SHOW ALL TOGGLE ──
+    function toggleGuestTableAll(btn) {
+      const tbody = document.getElementById('guestTableBody');
+      tbody.dataset.showAll = tbody.dataset.showAll === 'true' ? 'false' : 'true';
+      renderGuestTable();
+    }
+
+    // ── INTERNATIONAL NUMBER WARNING ──
+    function checkInternationalGuests() {
+      const intl = state.guests.filter(g => g.valid && !g.number.startsWith('+44'));
+      const warn = document.getElementById('intlWarning');
+      if (!warn) return;
+      if (intl.length > 0) {
+        warn.style.display = 'block';
+        warn.textContent = `⚠️ ${intl.length} guest${intl.length > 1 ? 's have' : ' has'} a non-UK number — international SMS rates may differ from £0.30/message.`;
+      } else {
+        warn.style.display = 'none';
+      }
+    }
+
     // ── SENDER NAME WARNING ──
     function checkSenderName() {
       const val = (document.getElementById('senderName')?.value || '').toLowerCase();
@@ -1318,18 +1389,61 @@
       warn.style.display = (!val || val === 'inviteforge') ? 'block' : 'none';
     }
 
-    // ── HANDLE ?sent=1 REDIRECT FROM STRIPE ──
+    // ── HANDLE STRIPE REDIRECT PARAMS ──
     (function() {
       const p = new URLSearchParams(window.location.search);
+      history.replaceState({}, '', window.location.pathname);
+
+      // Restore guests from localStorage / sessionStorage (persisted before Stripe redirect)
+      function restoreGuestsFromStorage(eventId) {
+        // Try sessionStorage first (same tab), then keyed localStorage
+        const fromSession = sessionStorage.getItem('if_guests');
+        const fromLocal = eventId ? localStorage.getItem('if_guests_' + eventId) : null;
+        const raw = fromSession || fromLocal;
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              state.guests = parsed;
+              return true;
+            }
+          } catch(e) {}
+        }
+        return false;
+      }
+
       if (p.get('sent') === '1') {
-        const eid = p.get('event') || state.eventId;
-        if (eid) state.eventId = eid;
-        // Show success state — go straight to dashboard
-        history.replaceState({}, '', window.location.pathname);
+        const eid = p.get('event') || state.eventId || localStorage.getItem('if_event_id');
+        if (eid) {
+          state.eventId = eid;
+          sessionStorage.setItem('if_event_id', eid);
+        }
+        const iurl = state.inviteUrl || localStorage.getItem('if_invite_url');
+        if (iurl) { state.inviteUrl = iurl; sessionStorage.setItem('if_invite_url', iurl); }
+
+        restoreGuestsFromStorage(eid);
+
+        // Mark all valid guests as sent (server fired the blast)
+        state.guests.filter(g=>g.valid).forEach(g => g.sendStatus = 'sent');
         state.sentCount = state.guests.filter(g=>g.valid).length;
         state.failedCount = 0;
-        state.guests.filter(g=>g.valid).forEach(g => g.sendStatus = 'sent');
+
+        // Clear the session guest cache now it's been consumed
+        sessionStorage.removeItem('if_guests');
+
         setTimeout(() => goStep(6), 100);
+      } else if (p.get('cancelled') === '1') {
+        // Payment was cancelled — restore to step 5 with banner
+        const eid = p.get('event') || state.eventId || localStorage.getItem('if_event_id');
+        if (eid) { state.eventId = eid; sessionStorage.setItem('if_event_id', eid); }
+        const iurl = state.inviteUrl || localStorage.getItem('if_invite_url');
+        if (iurl) { state.inviteUrl = iurl; sessionStorage.setItem('if_invite_url', iurl); }
+        restoreGuestsFromStorage(eid);
+        setTimeout(() => {
+          goStep(5);
+          const banner = document.getElementById('paymentCancelledBanner');
+          if (banner) banner.style.display = 'block';
+        }, 100);
       }
     })();
 
