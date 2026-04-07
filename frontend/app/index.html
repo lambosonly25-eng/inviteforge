@@ -1236,7 +1236,21 @@
           document.getElementById('inviteCreating').innerHTML = '<div style="color:#f59e0b;padding:24px;">⚠️ Could not create invite — is the backend running?</div>';
         }
       } else {
-        // Event already created — sync updated guest list to server (user may have gone back to step 4)
+        // Event already created — but verify it still exists on the server first
+        // (server restarts wipe SQLite; stale localStorage eventId causes "Invitation Not Found")
+        try {
+          const checkRes = await fetch(`/api/event/${state.eventId}/status`);
+          if (!checkRes.ok) {
+            // Event gone — clear stale IDs and fall through to create a fresh one
+            state.eventId = ''; state.inviteUrl = ''; state.authToken = '';
+            localStorage.removeItem('if_event_id'); localStorage.removeItem('if_invite_url'); localStorage.removeItem('if_auth_token');
+            sessionStorage.removeItem('if_event_id'); sessionStorage.removeItem('if_invite_url'); sessionStorage.removeItem('if_auth_token');
+            await updateSummary();
+            return;
+          }
+        } catch(e) { /* network error — proceed anyway, iframe will show its own error */ }
+
+        // Sync updated guest list to server (user may have gone back to step 4)
         const _jwt = localStorage.getItem('if_jwt') || '';
         const guestPayload = state.guests.filter(g=>g.valid).map(g=>({name:g.name,number:g.number}));
         fetch(`/api/event/${state.eventId}/guests`, {
