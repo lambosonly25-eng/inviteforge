@@ -159,7 +159,7 @@
 
   <header>
     <a href="/" class="logo">Invite<span>Forge</span></a>
-    <a href="/app/" class="back-link">← Create a new invitation</a>
+    <a href="/" class="back-link">← Back to home</a>
   </header>
 
   <main>
@@ -192,8 +192,6 @@
           <label for="loginPassword">Password</label>
           <input type="password" id="loginPassword" placeholder="Your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
           <button id="loginBtn" onclick="doLogin()">Sign In</button>
-          <div class="divider">or</div>
-          <a href="/app/" class="new-event-link">✨ Create a new event</a>
         </div>
 
         <!-- REGISTER -->
@@ -205,8 +203,6 @@
           <label for="regPassword2">Confirm password</label>
           <input type="password" id="regPassword2" placeholder="Repeat password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()"/>
           <button id="registerBtn" onclick="doRegister()">Create Account</button>
-          <div class="divider">or</div>
-          <a href="/app/" class="new-event-link">✨ Create a new event without an account</a>
         </div>
       </div>
 
