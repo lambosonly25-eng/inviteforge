@@ -989,17 +989,30 @@ async def create_phone_checkout(req: PhoneCheckoutRequest, request: Request):
 
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
-        line_items=[{
-            "price_data": {
-                "currency": "gbp",
-                "product_data": {
-                    "name": f"InviteForge — Send from My Phone ({method_label})",
-                    "description": f"Send personalised invites for {event_name} from your own phone. Zero spam filtering — 100% deliverability.",
+        line_items=[
+            {
+                "price_data": {
+                    "currency": "gbp",
+                    "product_data": {
+                        "name": f"InviteForge — Invitation Page",
+                        "description": f"Beautiful digital invite for {event_name} with permanent URL & RSVP tracking",
+                    },
+                    "unit_amount": 5000,  # £50.00
                 },
-                "unit_amount": 2500,  # £25.00
+                "quantity": 1,
             },
-            "quantity": 1,
-        }],
+            {
+                "price_data": {
+                    "currency": "gbp",
+                    "product_data": {
+                        "name": f"Phone Send Rights ({method_label})",
+                        "description": f"Send from your own number — zero spam filtering, 100% deliverability",
+                    },
+                    "unit_amount": 2500,  # £25.00
+                },
+                "quantity": 1,
+            },
+        ],
         mode="payment",
         success_url=f"{base}/app/?sent=1&event={req.event_id}&method={req.method}",
         cancel_url=f"{base}/app/?cancelled=1&event={req.event_id}",
