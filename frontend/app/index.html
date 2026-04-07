@@ -701,7 +701,7 @@
     // ── STATE ──
     const state = {
       step: 1,
-      eventType: '', eventName: '', eventDate: '', eventTime: '', eventVenue: '',
+      eventType: '', eventDate: '', eventTime: '', eventVenue: '',
       template: 'luxury', senderName: '',
       tone: 'formal', message: '',
       guests: [], // [{name, number, valid}]
@@ -1493,10 +1493,36 @@
       const nonResponders = state.guests.filter(g => g.valid && !g.rsvpReceived);
       if (!nonResponders.length) { alert('Everyone has responded!'); return; }
       if (!confirm(`Send a reminder to ${nonResponders.length} guests who haven't responded yet?`)) return;
+
+      // If customer used phone send, open the phone modal with non-responders only
+      if (state.sendMethod === 'phone_sms' || state.sendMethod === 'phone_whatsapp') {
+        const baseUrl = state.inviteUrl || localStorage.getItem('if_invite_url') || '';
+        if (!baseUrl) { alert('Invite URL not available.'); return; }
+        const type = state.sendMethod;
+        const rows = nonResponders.map(g => {
+          const msg = encodeURIComponent(buildPhoneMessage(g.name));
+          const num = g.number.replace(/\s+/g, '');
+          const href = type === 'phone_sms'
+            ? `sms:${num}?body=${msg}`
+            : `https://wa.me/${num.replace(/^\+/,'')}?text=${msg}`;
+          const target = type === 'phone_sms' ? '_self' : '_blank';
+          return `<div class="phone-modal-row">
+            <span class="phone-modal-name">${g.name}</span>
+            <a href="${href}" target="${target}" class="phone-modal-btn">${type === 'phone_sms' ? '💬 SMS' : '💚 WhatsApp'}</a>
+          </div>`;
+        }).join('');
+        document.getElementById('phoneSendRows').innerHTML = rows;
+        document.getElementById('phoneSendTotal').textContent = nonResponders.length;
+        document.getElementById('phoneSentCount').textContent = '0';
+        document.getElementById('phoneSendModal').style.display = 'flex';
+        return;
+      }
+
+      // Twilio path
       const sender = document.getElementById('senderName')?.value || document.getElementById('eventName')?.value?.replace(/\s+/g,'').substring(0,11) || 'InviteForge';
       let sent = 0;
       for (const g of nonResponders) {
-        const eventName = document.getElementById('eventName')?.value || 'our event';
+        const eventName = state.eventName || document.getElementById('eventName')?.value || 'our event';
         const reminderMsg = `Hi ${g.name}, just a friendly reminder to RSVP for ${eventName} — we'd love to hear from you! ${state.inviteUrl}?name=${encodeURIComponent(g.name)}`;
         try {
           const res = await fetch('/api/send-invite', {
@@ -1769,6 +1795,15 @@
     let _phoneSentCount = 0;
     let _phoneTotalCount = 0;
 
+    // Persist phone modal sent-set to sessionStorage so iOS page reload doesn't lose progress
+    function _phoneGetSentSet() {
+      try { return new Set(JSON.parse(sessionStorage.getItem('if_phone_sent') || '[]')); } catch(e) { return new Set(); }
+    }
+    function _phoneSaveSentSet(set) {
+      sessionStorage.setItem('if_phone_sent', JSON.stringify([...set]));
+    }
+    function _phoneClearSentSet() { sessionStorage.removeItem('if_phone_sent'); }
+
     function buildPhoneMessage(name) {
       const eventName = state.eventName
         || document.getElementById('eventName')?.value
@@ -1788,7 +1823,9 @@
         showSendError('Invite page not ready yet — please wait a moment and try again.');
         return;
       }
-      _phoneSentCount = 0;
+      // Restore sent progress from sessionStorage (survives iOS app-switch reload)
+      const sentSet = _phoneGetSentSet();
+      _phoneSentCount = sentSet.size;
       _phoneTotalCount = valid.length;
       const titleEl = document.getElementById('phoneSendTitle');
       const subEl = document.getElementById('phoneSendSub');
@@ -1805,15 +1842,17 @@
           ? `sms:${g.number}?body=${encodeURIComponent(msg)}`
           : `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
         const btnClass = type === 'phone_sms' ? 'sms-btn' : 'wa-btn';
-        const btnLabel = type === 'phone_sms' ? '📱 Send SMS' : '💬 WhatsApp';
+        const alreadySent = sentSet.has(i);
+        const btnLabel = alreadySent ? '✅ Sent' : (type === 'phone_sms' ? '📱 Send SMS' : '💬 WhatsApp');
+        const btnExtra = alreadySent ? 'done-btn' : btnClass;
         // sms: uses _self (avoids phantom blank tab on iOS); wa.me uses _blank (stays in browser)
         const target = type === 'phone_sms' ? '_self' : '_blank';
-        return `<div class="phone-guest-row" id="pgrow-${i}">
+        return `<div class="phone-guest-row${alreadySent ? ' done' : ''}" id="pgrow-${i}">
           <div class="phone-guest-info">
             <div class="gname">${g.name}</div>
             <div class="gnum">${g.number}</div>
           </div>
-          <a href="${href}" class="phone-send-btn ${btnClass}" id="pgbtn-${i}"
+          <a href="${href}" class="phone-send-btn ${btnExtra}" id="pgbtn-${i}"
             onclick="markPhoneGuestSent(${i})" target="${target}">${btnLabel}</a>
         </div>`;
       }).join('');
@@ -1822,8 +1861,13 @@
     }
 
     function markPhoneGuestSent(idx) {
-      _phoneSentCount++;
-      updatePhoneModalCounter();
+      const sentSet = _phoneGetSentSet();
+      if (!sentSet.has(idx)) {
+        sentSet.add(idx);
+        _phoneSaveSentSet(sentSet);
+        _phoneSentCount = sentSet.size;
+        updatePhoneModalCounter();
+      }
       const row = document.getElementById('pgrow-' + idx);
       const btn = document.getElementById('pgbtn-' + idx);
       if (row) row.classList.add('done');
@@ -1845,6 +1889,7 @@
 
     function phoneSendDone() {
       closePhoneSendModal();
+      _phoneClearSentSet();
       state.sentCount = _phoneSentCount;
       state.failedCount = _phoneTotalCount - _phoneSentCount;
       goStep(6);
