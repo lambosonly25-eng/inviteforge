@@ -430,13 +430,13 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
     .rsvp-select option {{ background: var(--navy-mid); }}
     .rsvp-attending {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }}
     .rsvp-attending-btn {{
-      padding: 16px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.1);
-      background: transparent; color: var(--white); font-size: 15px; font-weight: 600;
-      cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif;
+      padding: 18px 16px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
+      font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;
     }}
-    .rsvp-attending-btn:hover {{ border-color: var(--gold); color: var(--gold); }}
-    .rsvp-attending-btn.yes.selected {{ background: rgba(34,197,94,0.15); border-color: #22c55e; color: #22c55e; }}
-    .rsvp-attending-btn.no.selected {{ background: rgba(239,68,68,0.1); border-color: #ef4444; color: #ef4444; }}
+    .rsvp-attending-btn.yes.selected {{ background: #22c55e; border-color: #22c55e; color: #fff; }}
+    .rsvp-attending-btn.no.selected {{ background: #ef4444; border-color: #ef4444; color: #fff; }}
     #rsvpAttending {{ display: none; }}
     .btn-submit-rsvp {{
       width: 100%; padding: 18px; border-radius: 12px;
@@ -525,8 +525,8 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
         <div class="rsvp-group">
           <label class="rsvp-label">Will you be attending?</label>
           <div class="rsvp-attending">
-            <button class="rsvp-attending-btn yes" onclick="selectAttending('yes')">✓ Attending</button>
-            <button class="rsvp-attending-btn no" onclick="selectAttending('no')">✗ Can't Make It</button>
+            <button type="button" class="rsvp-attending-btn yes" onclick="selectAttending('yes')">✓ Attending</button>
+            <button type="button" class="rsvp-attending-btn no" onclick="selectAttending('no')">✗ Can't Make It</button>
           </div>
           <input type="hidden" id="rsvpAttending"/>
         </div>
@@ -550,7 +550,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
           <label class="rsvp-label">Message to the host (optional)</label>
           <textarea class="rsvp-textarea" id="rsvpMessage" rows="3" placeholder="Anything you'd like to add..."></textarea>
         </div>
-        <button class="btn-submit-rsvp" id="rsvpSubmitBtn" onclick="submitRSVP()">Send My RSVP</button>
+        <button type="button" class="btn-submit-rsvp" id="rsvpSubmitBtn" onclick="submitRSVP()">Send My RSVP</button>
       </div>
       <div class="rsvp-success" id="rsvpSuccess">
         <div class="rsvp-success-icon">💌</div>
