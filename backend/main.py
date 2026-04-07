@@ -10,7 +10,8 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional
 import os, json, uuid, re, asyncio, shutil, html, time
-from datetime import datetime
+from datetime import datetime, timedelta
+import threading
 from pathlib import Path
 from urllib.parse import quote as urlquote
 from twilio.rest import Client
@@ -554,6 +555,59 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
     </div>
   </section>
 
+  <!-- GALLERY SECTION -->
+  <section class="section" id="gallery" style="padding:60px 20px 40px;">
+    <div style="max-width:600px;margin:0 auto;">
+
+      <!-- Upload form -->
+      <div style="text-align:center;margin-bottom:40px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#c9a96e;margin-bottom:10px;">Share a Moment</div>
+        <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;margin-bottom:10px;">Were you there?</div>
+        <div style="font-size:15px;color:#9ca3af;margin-bottom:28px;">Share a photo from this event and it may appear in the guest gallery.</div>
+
+        <div id="galleryUploadForm">
+          <input type="text" id="galleryName" placeholder="Your name" maxlength="50"
+            style="width:100%;max-width:340px;padding:13px 18px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#f8f6f0;font-family:Inter,sans-serif;font-size:15px;outline:none;display:block;margin:0 auto 12px;box-sizing:border-box;"/>
+
+          <div id="photoDropZone"
+            style="max-width:340px;margin:0 auto 12px;border:2px dashed rgba(201,169,110,0.35);border-radius:12px;padding:28px 20px;cursor:pointer;transition:border-color 0.2s;"
+            onclick="document.getElementById('galleryFileInput').click()"
+            ondragover="event.preventDefault();this.style.borderColor='#c9a96e'"
+            ondragleave="this.style.borderColor='rgba(201,169,110,0.35)'"
+            ondrop="handlePhotoDrop(event)">
+            <div style="font-size:36px;margin-bottom:8px;">📷</div>
+            <div id="dropZoneText" style="font-size:14px;color:#9ca3af;">Tap to choose a photo</div>
+          </div>
+          <input type="file" id="galleryFileInput" accept="image/*" style="display:none;" onchange="handlePhotoSelect(this.files[0])"/>
+
+          <div id="galleryPreviewWrap" style="display:none;max-width:340px;margin:0 auto 12px;">
+            <img id="galleryPreviewImg" style="width:100%;border-radius:10px;border:1px solid rgba(201,169,110,0.25);"/>
+          </div>
+
+          <button id="gallerySubmitBtn"
+            style="max-width:340px;width:100%;padding:14px;background:#c9a96e;color:#0a0e1a;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;display:block;margin:0 auto;"
+            onclick="submitGalleryPhoto()">Share Photo</button>
+
+          <div id="galleryUploadStatus" style="margin-top:12px;font-size:14px;text-align:center;"></div>
+        </div>
+
+        <div id="galleryUploadSuccess" style="display:none;text-align:center;padding:20px;">
+          <div style="font-size:40px;margin-bottom:12px;">✅</div>
+          <div style="font-size:17px;font-weight:600;color:#f8f6f0;margin-bottom:6px;">Photo submitted!</div>
+          <div style="font-size:14px;color:#9ca3af;">The host will review it and add it to the gallery.</div>
+          <button onclick="resetGalleryUpload()" style="margin-top:16px;padding:10px 24px;background:rgba(201,169,110,0.1);border:1px solid rgba(201,169,110,0.3);color:#c9a96e;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;font-family:Inter,sans-serif;">Share Another</button>
+        </div>
+      </div>
+
+      <!-- Approved gallery grid -->
+      <div id="approvedGallerySection" style="display:none;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#c9a96e;margin-bottom:16px;text-align:center;">Guest Gallery</div>
+        <div id="approvedGalleryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;"></div>
+      </div>
+
+    </div>
+  </section>
+
   <footer>
     <p>Created with <a href="/" target="_blank">InviteForge</a> &nbsp;·&nbsp; Luxury Digital Invitations</p>
   </footer>
@@ -648,8 +702,133 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
         err.style.cssText = 'color:#f87171;font-size:13px;margin-bottom:12px;padding:10px 14px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.3);border-radius:8px;';
         document.getElementById('rsvpSubmitBtn').before(err);
       }}
-      err.textContent = '⚠️ ' + msg;
+      err.textContent = '\u26a0\ufe0f ' + msg;
     }}
+
+    // ── GALLERY ──
+    var _galleryFile = null;
+
+    function handlePhotoSelect(file) {{
+      if (!file) return;
+      _galleryFile = file;
+      var dropText = document.getElementById('dropZoneText');
+      if (dropText) dropText.textContent = file.name;
+      compressAndPreview(file);
+    }}
+
+    function handlePhotoDrop(e) {{
+      e.preventDefault();
+      var dt = e.dataTransfer;
+      var zone = document.getElementById('photoDropZone');
+      if (zone) zone.style.borderColor = 'rgba(201,169,110,0.35)';
+      if (dt && dt.files && dt.files[0]) handlePhotoSelect(dt.files[0]);
+    }}
+
+    function compressAndPreview(file) {{
+      var reader = new FileReader();
+      reader.onload = function(e) {{
+        var img = new Image();
+        img.onload = function() {{
+          var maxW = 1200;
+          var scale = Math.min(maxW / img.width, 1);
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(function(blob) {{
+            _galleryFile = blob;
+            var prev = document.getElementById('galleryPreviewWrap');
+            var prevImg = document.getElementById('galleryPreviewImg');
+            if (prev && prevImg) {{
+              prevImg.src = URL.createObjectURL(blob);
+              prev.style.display = 'block';
+            }}
+          }}, 'image/jpeg', 0.82);
+        }};
+        img.src = e.target.result;
+      }};
+      reader.readAsDataURL(file);
+    }}
+
+    async function submitGalleryPhoto() {{
+      var name = (document.getElementById('galleryName').value || '').trim();
+      var statusEl = document.getElementById('galleryUploadStatus');
+      var btn = document.getElementById('gallerySubmitBtn');
+      if (!_galleryFile) {{ statusEl.textContent = 'Please choose a photo first.'; statusEl.style.color='#f59e0b'; return; }}
+      if (!name) {{ statusEl.textContent = 'Please enter your name.'; statusEl.style.color='#f59e0b'; return; }}
+      btn.disabled = true;
+      btn.textContent = 'Uploading\u2026';
+      statusEl.textContent = '';
+      try {{
+        var fd = new FormData();
+        fd.append('file', _galleryFile, 'photo.jpg');
+        fd.append('submitted_by', name);
+        var res = await fetch('/api/event/' + EVENT_ID + '/gallery/upload', {{method:'POST', body:fd}});
+        var data = await res.json();
+        if (res.ok && data.success) {{
+          document.getElementById('galleryUploadForm').style.display = 'none';
+          document.getElementById('galleryUploadSuccess').style.display = 'block';
+        }} else {{
+          statusEl.textContent = data.detail || 'Upload failed. Try again.';
+          statusEl.style.color = '#f87171';
+          btn.disabled = false;
+          btn.textContent = 'Share Photo';
+        }}
+      }} catch(e) {{
+        statusEl.textContent = 'Could not connect. Check your connection.';
+        statusEl.style.color = '#f87171';
+        btn.disabled = false;
+        btn.textContent = 'Share Photo';
+      }}
+    }}
+
+    function resetGalleryUpload() {{
+      _galleryFile = null;
+      document.getElementById('galleryUploadForm').style.display = 'block';
+      document.getElementById('galleryUploadSuccess').style.display = 'none';
+      document.getElementById('galleryName').value = '';
+      document.getElementById('galleryFileInput').value = '';
+      var prev = document.getElementById('galleryPreviewWrap');
+      if (prev) prev.style.display = 'none';
+      var dropText = document.getElementById('dropZoneText');
+      if (dropText) dropText.textContent = 'Tap to choose a photo';
+      document.getElementById('galleryUploadStatus').textContent = '';
+      document.getElementById('gallerySubmitBtn').disabled = false;
+      document.getElementById('gallerySubmitBtn').textContent = 'Share Photo';
+    }}
+
+    function loadApprovedGallery() {{
+      fetch('/api/event/' + EVENT_ID + '/gallery')
+        .then(function(r) {{ return r.json(); }})
+        .then(function(data) {{
+          var photos = data.approved || [];
+          var section = document.getElementById('approvedGallerySection');
+          var grid = document.getElementById('approvedGalleryGrid');
+          if (!photos.length || !section || !grid) return;
+          grid.textContent = '';
+          photos.forEach(function(p) {{
+            var wrap = document.createElement('div');
+            wrap.style.cssText = 'position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;cursor:pointer;';
+            var img = document.createElement('img');
+            img.src = p.url;
+            img.alt = 'Photo by ' + p.submitted_by;
+            img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+            img.loading = 'lazy';
+            var caption = document.createElement('div');
+            caption.textContent = p.submitted_by;
+            caption.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.55);color:#f8f6f0;font-size:11px;padding:5px 8px;font-family:Inter,sans-serif;';
+            wrap.onclick = function() {{ window.open(p.url, '_blank'); }};
+            wrap.appendChild(img);
+            wrap.appendChild(caption);
+            grid.appendChild(wrap);
+          }});
+          section.style.display = 'block';
+        }})
+        .catch(function() {{}});
+    }}
+
+    loadApprovedGallery();
   </script>
 </body>
 </html>"""
@@ -896,6 +1075,182 @@ async def upload_media(file: UploadFile = File(...), request: Request = None):
     dest = UPLOADS_DIR / safe_name
     dest.write_bytes(data)
     return {"url": f"/uploads/{safe_name}", "filename": safe_name, "storage": "local"}
+
+
+# ── GALLERY ──
+
+def _gallery_cleanup_loop():
+    """Background thread: delete photos declined >7 days ago, notify host."""
+    while True:
+        try:
+            cutoff = datetime.now() - timedelta(days=7)
+            events = load_events()
+            changed = False
+            cleaned: dict = {}
+            for eid, event in events.items():
+                gallery = event.get("gallery", [])
+                kept, removed = [], 0
+                for p in gallery:
+                    if p.get("status") == "declined" and p.get("declined_at"):
+                        try:
+                            if datetime.fromisoformat(p["declined_at"]) < cutoff:
+                                removed += 1
+                                changed = True
+                                continue
+                        except Exception:
+                            pass
+                    kept.append(p)
+                if removed:
+                    events[eid]["gallery"] = kept
+                    cleaned[eid] = {"event": event, "count": removed}
+            if changed:
+                save_events(events)
+                for eid, info in cleaned.items():
+                    host_email = info["event"].get("host_email", "")
+                    if not host_email:
+                        continue
+                    n = info["count"]
+                    ename = html.escape(info["event"].get("name", "Your Event"))
+                    send_email(
+                        host_email,
+                        f"Gallery cleanup — {ename}",
+                        f'<div style="font-family:Arial,sans-serif;color:#374151;padding:24px;">'
+                        f'<p>{n} declined photo{"s have" if n > 1 else " has"} been permanently deleted '
+                        f'from <strong>{ename}</strong> after 7 days.</p>'
+                        f'<p style="color:#6b7280;font-size:13px;">Your approved gallery is untouched.</p></div>'
+                    )
+        except Exception:
+            pass
+        time.sleep(86400)
+
+
+@app.on_event("startup")
+async def startup_event():
+    threading.Thread(target=_gallery_cleanup_loop, daemon=True).start()
+
+
+def _save_photo_to_cdn(data: bytes, path: str) -> str:
+    """Try GitHub CDN first, fall back to local. Returns URL."""
+    if GITHUB_TOKEN:
+        try:
+            import urllib.request as _ur, ssl as _ssl, base64 as _b64
+            encoded = _b64.b64encode(data).decode()
+            body = json.dumps({"message": f"gallery: {path}", "content": encoded}).encode()
+            req = _ur.Request(
+                f"https://api.github.com/repos/lambosonly25-eng/inviteforge/contents/uploads/{path}",
+                data=body, method="PUT",
+                headers={"Authorization": f"token {GITHUB_TOKEN}", "Content-Type": "application/json",
+                         "Accept": "application/vnd.github.v3+json"}
+            )
+            with _ur.urlopen(req, context=_ssl._create_unverified_context()) as r:
+                return json.load(r)["content"]["download_url"]
+        except Exception:
+            pass
+    fname = path.split("/")[-1]
+    gallery_dir = UPLOADS_DIR / "gallery" / path.split("/")[-2]
+    gallery_dir.mkdir(parents=True, exist_ok=True)
+    (gallery_dir / fname).write_bytes(data)
+    return f"/uploads/gallery/{path.split('/')[-2]}/{fname}"
+
+
+@app.post("/api/event/{event_id}/gallery/upload")
+async def gallery_upload(
+    event_id: str,
+    file: UploadFile = File(...),
+    submitted_by: str = "",
+    request: Request = None,
+):
+    ip = get_client_ip(request) if request else "unknown"
+    if not check_rate_limit(ip, max_calls=10, window_seconds=3600):
+        raise HTTPException(429, detail="Too many uploads. Try again in an hour.")
+    events = load_events()
+    if event_id not in events:
+        raise HTTPException(404, detail="Event not found")
+    ext = Path(file.filename or "photo.jpg").suffix.lower()
+    if ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp"}:
+        raise HTTPException(400, detail="Only image files allowed.")
+    data = await file.read()
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(400, detail="Photo too large. Max 10MB.")
+    photo_id = str(uuid.uuid4())[:8]
+    url = _save_photo_to_cdn(data, f"gallery/{event_id}/{photo_id}{ext}")
+    name_safe = html.escape((submitted_by or "A guest").strip()[:50])
+    photo = {
+        "id": photo_id, "url": url, "submitted_by": name_safe,
+        "submitted_at": datetime.now().isoformat(),
+        "status": "pending", "declined_at": None,
+    }
+    event = events[event_id]
+    event.setdefault("gallery", []).append(photo)
+    save_events(events)
+    host_email = event.get("host_email", "")
+    if host_email:
+        ename = html.escape(event.get("name", "Your Event"))
+        tok = event.get("auth_token", "")
+        dash = f"{PUBLIC_URL}/app/?event={event_id}&token={tok}"
+        send_email(host_email, f"New photo shared — {ename}",
+            f'<div style="font-family:Arial,sans-serif;color:#374151;padding:24px;max-width:500px;">'
+            f'<p style="font-size:16px;">📸 <strong>{name_safe}</strong> just shared a photo for '
+            f'<strong>{ename}</strong>.</p>'
+            f'<p>Open your dashboard to approve or decline it — takes 5 seconds.</p>'
+            f'<a href="{dash}" style="display:inline-block;padding:12px 28px;background:#c9a96e;'
+            f'color:#0a0e1a;text-decoration:none;border-radius:8px;font-weight:700;">Review Photo →</a></div>')
+    return {"success": True, "photo_id": photo_id}
+
+
+@app.get("/api/event/{event_id}/gallery")
+async def get_gallery(event_id: str, token: str = "", request: Request = None):
+    events = load_events()
+    if event_id not in events:
+        raise HTTPException(404, detail="Event not found")
+    event = events[event_id]
+    gallery = event.get("gallery", [])
+    user_id = auth_module.get_current_user_id(request) if request else None
+    stored_token = event.get("auth_token", "")
+    is_host = (user_id and event.get("user_id") == user_id) or (stored_token and token == stored_token)
+    approved = [p for p in gallery if p.get("status") == "approved"]
+    if is_host:
+        pending = [p for p in gallery if p.get("status") == "pending"]
+        return {"approved": approved, "pending": pending, "is_host": True}
+    return {"approved": approved, "is_host": False}
+
+
+@app.post("/api/event/{event_id}/gallery/{photo_id}/approve")
+async def gallery_approve(event_id: str, photo_id: str, request: Request, token: str = ""):
+    events = load_events()
+    if event_id not in events:
+        raise HTTPException(404, detail="Event not found")
+    event = events[event_id]
+    user_id = auth_module.get_current_user_id(request)
+    stored_token = event.get("auth_token", "")
+    if not ((user_id and event.get("user_id") == user_id) or (stored_token and token == stored_token)):
+        raise HTTPException(403, detail="Not authorised")
+    for p in event.get("gallery", []):
+        if p["id"] == photo_id:
+            p["status"] = "approved"
+            p["declined_at"] = None
+            save_events(events)
+            return {"success": True}
+    raise HTTPException(404, detail="Photo not found")
+
+
+@app.post("/api/event/{event_id}/gallery/{photo_id}/decline")
+async def gallery_decline(event_id: str, photo_id: str, request: Request, token: str = ""):
+    events = load_events()
+    if event_id not in events:
+        raise HTTPException(404, detail="Event not found")
+    event = events[event_id]
+    user_id = auth_module.get_current_user_id(request)
+    stored_token = event.get("auth_token", "")
+    if not ((user_id and event.get("user_id") == user_id) or (stored_token and token == stored_token)):
+        raise HTTPException(403, detail="Not authorised")
+    for p in event.get("gallery", []):
+        if p["id"] == photo_id:
+            p["status"] = "declined"
+            p["declined_at"] = datetime.now().isoformat()
+            save_events(events)
+            return {"success": True}
+    raise HTTPException(404, detail="Photo not found")
 
 
 @app.post("/api/send-test")
