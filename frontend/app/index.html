@@ -1511,10 +1511,16 @@
             <a href="${href}" target="${target}" class="phone-modal-btn">${type === 'phone_sms' ? '💬 SMS' : '💚 WhatsApp'}</a>
           </div>`;
         }).join('');
-        document.getElementById('phoneSendRows').innerHTML = rows;
-        document.getElementById('phoneSendTotal').textContent = nonResponders.length;
-        document.getElementById('phoneSentCount').textContent = '0';
-        document.getElementById('phoneSendModal').style.display = 'flex';
+        document.getElementById('phoneSendList').innerHTML = rows;
+        document.getElementById('phoneSendProgress').textContent = `0 / ${nonResponders.length} sent`;
+        document.getElementById('phoneSendTitle').textContent = type === 'phone_sms' ? '📱 Send Reminders via SMS' : '💬 Send Reminders via WhatsApp';
+        document.getElementById('phoneSendSub').textContent = type === 'phone_sms'
+          ? 'Tap each button → Messages opens → hit Send → come back'
+          : 'Tap each button → WhatsApp opens → hit Send → come back';
+        _phoneSentCount = 0;
+        _phoneTotalCount = nonResponders.length;
+        document.getElementById('phoneSendModal').style.display = 'block';
+        document.body.style.overflow = 'hidden';
         return;
       }
 
