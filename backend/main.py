@@ -1789,17 +1789,26 @@ async def get_user_events(request: Request):
     }
 
 
+class ResendLinkRequest(BaseModel):
+    auth_token: Optional[str] = ""
+
 @app.post("/api/resend-link/{event_id}")
-async def resend_magic_link(event_id: str, request: Request):
-    """Re-send the magic link to the host of a given event."""
+async def resend_magic_link(event_id: str, body: ResendLinkRequest, request: Request):
+    """Re-send the magic link to the host — requires auth_token or JWT ownership."""
     ip = get_client_ip(request)
     if not check_rate_limit(ip, max_calls=3, window_seconds=300):
         raise HTTPException(429, detail="Too many resend requests.")
+    user_id = get_current_user_id(request)
     events = load_events()
     ev = events.get(event_id)
     if not ev:
         raise HTTPException(404, detail="Event not found")
-    auth_token = ev.get("auth_token", "")
+    stored_token = ev.get("auth_token", "")
+    owns_via_jwt = user_id and ev.get("user_id") == user_id
+    owns_via_token = stored_token and body.auth_token and (body.auth_token == stored_token)
+    if not owns_via_jwt and not owns_via_token:
+        raise HTTPException(403, detail="Not authorised for this event.")
+    auth_token = stored_token
     if not ev.get("host_email") or not auth_token:
         raise HTTPException(400, detail="No email address on file for this event.")
     ok = send_magic_link_email(ev, event_id, auth_token)
