@@ -728,7 +728,7 @@ async def create_checkout(req: CheckoutRequest, request: Request):
         ],
         mode="payment",
         success_url=f"{base}/app/?sent=1&event={req.event_id}",
-        cancel_url=f"{base}/app/?cancelled=1",
+        cancel_url=f"{base}/app/?cancelled=1&event={req.event_id}",
         metadata={"event_id": req.event_id},
     )
     return {"checkout_url": session.url}
