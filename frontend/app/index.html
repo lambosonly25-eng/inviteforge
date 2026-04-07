@@ -1256,6 +1256,10 @@
         showSendError('No valid guests to send to. Go back to Step 4 and check your guest list.');
         return;
       }
+      if (valid.length > 500) {
+        showSendError(`Guest list has ${valid.length} guests — maximum is 500 per event. Please split into multiple events.`);
+        return;
+      }
 
       const sender = document.getElementById('senderName').value || '';
       if (!sender) {
