@@ -535,7 +535,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
           </div>
           <input type="hidden" id="rsvpAttending" value="yes"/>
         </div>
-        <div id="rsvpYesFields" style="display:none;">
+        <div id="rsvpYesFields" style="display:block;">
           <div class="rsvp-group">
             <label class="rsvp-label">Number of guests (including yourself)</label>
             <select class="rsvp-select" id="rsvpGuests">
@@ -1014,13 +1014,19 @@ def build_invite_page(event: dict, event_id: str) -> str:
 
 # ── ROUTES ──
 
+_NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}
+
 @app.get("/")
 async def root():
-    return FileResponse("../frontend/index.html")
+    return FileResponse("../frontend/index.html", headers=_NO_CACHE)
+
+@app.get("/app/index.html")
+async def app_index():
+    return FileResponse("../frontend/app/index.html", headers=_NO_CACHE)
 
 @app.get("/login")
 async def login_page():
-    return FileResponse("../frontend/login.html")
+    return FileResponse("../frontend/login.html", headers=_NO_CACHE)
 
 @app.get("/privacy")
 async def privacy():
