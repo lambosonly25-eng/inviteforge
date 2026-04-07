@@ -772,7 +772,7 @@
       sentCount: null,
       failedCount: null,
       sendMethod: 'twilio',  // 'twilio' | 'phone_sms' | 'phone_whatsapp'
-      testMode: true,   // updated from /api/config on load
+      testMode: false,  // updated from /api/config on load — default false so config failure = safe (pays)
     };
 
     // Load config from backend
@@ -1483,6 +1483,7 @@
         } catch(e) {
           btn.disabled = false;
           btn.innerHTML = `🚀 Pay & Send — £${(50 + valid.length * 0.30).toFixed(2)}`;
+          showSendError('Could not reach the payment server. Check your connection and try again.');
           return;
         }
       }
@@ -2013,8 +2014,7 @@
       const btn = document.getElementById('pgbtn-' + idx);
       if (row) row.classList.add('done');
       if (btn) { btn.textContent = '✅ Sent'; btn.className = 'phone-send-btn done-btn'; }
-      const valid = state.guests.filter(g => g.valid);
-      if (valid[idx]) valid[idx].sendStatus = 'sent';
+      if (_phoneModalGuests[idx]) _phoneModalGuests[idx].sendStatus = 'sent';
       state.sentCount = _phoneSentCount;
     }
 
@@ -2097,9 +2097,13 @@
     initAuthHeader();
 
     function doLogout() {
+      // Clear JWT and all event state so a second user on the same device starts clean
       localStorage.removeItem('if_jwt');
+      ['if_event_id','if_invite_url','if_auth_token','if_event_name','if_sender','if_message'].forEach(k => localStorage.removeItem(k));
+      sessionStorage.clear();
+      Object.assign(state, { eventId: '', inviteUrl: '', authToken: '', eventName: '', guests: [], template: 'classic', mediaUrl: '', sentCount: null, failedCount: null });
       document.getElementById('myEventsModal').style.display = 'none';
-      initAuthHeader();
+      window.location.replace('/login');
     }
 
     function _makeStatusEl(msg, color) {
