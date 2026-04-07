@@ -816,12 +816,40 @@ async def create_event(req: EventCreateRequest, request: Request):
     return {"event_id": event_id, "invite_url": invite_url, "auth_token": auth_token}
 
 
+NOT_FOUND_PAGE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Invitation Not Found — InviteForge</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:#0a0e1a;color:#f8f6f0;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:40px 24px}
+    .card{max-width:480px}
+    .icon{font-size:64px;margin-bottom:24px;opacity:0.6}
+    h1{font-family:'Playfair Display',serif;font-size:36px;color:#c9a96e;margin-bottom:16px}
+    p{font-size:16px;color:#9ca3af;line-height:1.7;margin-bottom:32px}
+    a{display:inline-block;padding:14px 36px;background:#c9a96e;color:#0a0e1a;border-radius:100px;font-weight:700;font-size:15px;text-decoration:none;letter-spacing:0.5px}
+    a:hover{background:#e8d5a3}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">💌</div>
+    <h1>Invitation Not Found</h1>
+    <p>This invitation link has expired, been removed, or the URL may be incorrect.<br/>If you received this link from someone, ask them to resend it.</p>
+    <a href="/">Create Your Own Invitation →</a>
+  </div>
+</body>
+</html>"""
+
 @app.get("/invite/{event_id}", response_class=HTMLResponse)
 async def serve_invite(event_id: str):
     events = load_events()
     event = events.get(event_id)
     if not event:
-        raise HTTPException(404, detail="Invite not found")
+        return HTMLResponse(NOT_FOUND_PAGE, status_code=404)
     return HTMLResponse(build_invite_page(event, event_id))
 
 
@@ -906,9 +934,13 @@ async def send_invite(req: InviteRequest, request: Request):
         return {"success": False, "error": str(e), "name": req.name}
 
 
+MAX_GUESTS = 500
+
 @app.post("/api/create-checkout")
 async def create_checkout(req: CheckoutRequest, request: Request):
     """Create a Stripe Checkout session or bypass in TEST_MODE."""
+    if len(req.guests) > MAX_GUESTS:
+        raise HTTPException(400, detail=f"Guest list too large. Maximum {MAX_GUESTS} guests per event.")
     events = load_events()
     if req.event_id not in events:
         raise HTTPException(404, detail="Event not found")
