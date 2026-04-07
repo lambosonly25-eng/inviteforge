@@ -119,6 +119,27 @@
     }
     .new-event-link:hover { border-color: var(--gold); color: var(--gold); }
 
+    /* ── TABS ── */
+    .tabs { display: flex; gap: 0; margin-bottom: 32px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+    .tab {
+      flex: 1; padding: 12px; background: none; border: none;
+      color: var(--grey); font-size: 14px; font-weight: 600;
+      cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s;
+    }
+    .tab.active { background: rgba(201,169,110,0.1); color: var(--gold); }
+
+    input[type="password"] {
+      width: 100%; padding: 14px 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 10px; color: var(--white);
+      font-family: 'Inter', sans-serif; font-size: 15px;
+      outline: none; transition: border-color 0.2s;
+      margin-bottom: 16px;
+    }
+    input[type="password"]:focus { border-color: var(--gold); }
+    input[type="password"]::placeholder { color: rgba(156,163,175,0.4); }
+
     /* ── FOOTER ── */
     footer {
       text-align: center; padding: 28px;
@@ -143,32 +164,52 @@
 
   <main>
     <div class="card">
-      <!-- LOGIN FORM -->
-      <div id="loginForm">
-        <div class="card-icon">✉️</div>
-        <div class="card-title">Access your dashboard</div>
-        <div class="card-sub">Enter the email you used when creating your event. We'll send you a magic link — no password needed.</div>
-
-        <div class="error" id="errorMsg"></div>
-
-        <label for="emailInput">Your email address</label>
-        <input type="email" id="emailInput" placeholder="you@example.com" autocomplete="email" onkeydown="if(event.key==='Enter')sendLink()"/>
-
-        <button id="submitBtn" onclick="sendLink()">Send My Dashboard Link</button>
-
-        <div class="divider">or</div>
-        <a href="/app/" class="new-event-link">✨ Create a new event</a>
-      </div>
 
       <!-- SUCCESS STATE -->
       <div class="success" id="successState">
-        <div class="success-icon">💌</div>
-        <div class="success-title">Check your inbox</div>
-        <div class="success-body">
-          We've sent a dashboard link to <strong id="sentEmail"></strong>.<br/><br/>
-          Click the link in the email to jump straight into your event dashboard. It might take a minute or two to arrive.
+        <div class="success-icon">🎉</div>
+        <div class="success-title" id="successTitle">Welcome back!</div>
+        <div class="success-body" id="successBody">Redirecting to your dashboard…</div>
+      </div>
+
+      <!-- AUTH FORMS -->
+      <div id="authForms">
+        <div class="card-icon">✉️</div>
+        <div class="card-title">Your InviteForge</div>
+        <div class="card-sub">Sign in to manage all your events in one place.</div>
+
+        <div class="tabs">
+          <button class="tab active" id="tabLogin" onclick="switchTab('login')">Sign In</button>
+          <button class="tab" id="tabRegister" onclick="switchTab('register')">Create Account</button>
+        </div>
+
+        <div class="error" id="errorMsg"></div>
+
+        <!-- SIGN IN -->
+        <div id="loginForm">
+          <label for="loginEmail">Email address</label>
+          <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email"/>
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" placeholder="Your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+          <button id="loginBtn" onclick="doLogin()">Sign In</button>
+          <div class="divider">or</div>
+          <a href="/app/" class="new-event-link">✨ Create a new event</a>
+        </div>
+
+        <!-- REGISTER -->
+        <div id="registerForm" style="display:none;">
+          <label for="regEmail">Email address</label>
+          <input type="email" id="regEmail" placeholder="you@example.com" autocomplete="email"/>
+          <label for="regPassword">Choose a password</label>
+          <input type="password" id="regPassword" placeholder="Minimum 8 characters" autocomplete="new-password"/>
+          <label for="regPassword2">Confirm password</label>
+          <input type="password" id="regPassword2" placeholder="Repeat password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()"/>
+          <button id="registerBtn" onclick="doRegister()">Create Account</button>
+          <div class="divider">or</div>
+          <a href="/app/" class="new-event-link">✨ Create a new event without an account</a>
         </div>
       </div>
+
     </div>
   </main>
 
@@ -180,48 +221,94 @@
   </footer>
 
   <script>
-    async function sendLink() {
-      const email = document.getElementById('emailInput').value.trim();
-      const btn = document.getElementById('submitBtn');
+    // If already logged in, go straight to dashboard
+    if (localStorage.getItem('if_jwt')) {
+      window.location.href = '/app/';
+    }
+
+    function switchTab(tab) {
+      const isLogin = tab === 'login';
+      document.getElementById('loginForm').style.display    = isLogin ? '' : 'none';
+      document.getElementById('registerForm').style.display = isLogin ? 'none' : '';
+      document.getElementById('tabLogin').classList.toggle('active', isLogin);
+      document.getElementById('tabRegister').classList.toggle('active', !isLogin);
+      document.getElementById('errorMsg').style.display = 'none';
+    }
+
+    function showError(msg) {
       const err = document.getElementById('errorMsg');
+      err.textContent = '⚠️ ' + msg;
+      err.style.display = 'block';
+    }
 
-      err.style.display = 'none';
-      if (!email || !email.includes('@')) {
-        err.textContent = '⚠️ Please enter a valid email address.';
-        err.style.display = 'block';
-        return;
-      }
+    function showSuccess(title, body) {
+      document.getElementById('authForms').style.display = 'none';
+      document.getElementById('successTitle').textContent = title;
+      document.getElementById('successBody').textContent = body;
+      document.getElementById('successState').style.display = 'block';
+    }
 
-      btn.disabled = true;
-      btn.textContent = 'Sending...';
+    function storeAndRedirect(token) {
+      localStorage.setItem('if_jwt', token);
+      showSuccess('Welcome!', 'Redirecting to your dashboard…');
+      setTimeout(() => { window.location.href = '/app/'; }, 800);
+    }
 
+    async function doLogin() {
+      const email    = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const btn      = document.getElementById('loginBtn');
+      document.getElementById('errorMsg').style.display = 'none';
+      if (!email || !email.includes('@')) { showError('Enter a valid email.'); return; }
+      if (!password) { showError('Enter your password.'); return; }
+      btn.disabled = true; btn.textContent = 'Signing in…';
       try {
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email }),
+        const res  = await fetch('/api/auth/login', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ email, password })
         });
         const data = await res.json();
         if (res.ok) {
-          document.getElementById('loginForm').style.display = 'none';
-          document.getElementById('sentEmail').textContent = email;
-          document.getElementById('successState').style.display = 'block';
+          storeAndRedirect(data.token);
         } else {
-          err.textContent = '⚠️ ' + (data.detail || 'Something went wrong. Please try again.');
-          err.style.display = 'block';
-          btn.disabled = false;
-          btn.textContent = 'Send My Dashboard Link';
+          showError(data.detail || 'Sign in failed. Please check your details.');
+          btn.disabled = false; btn.textContent = 'Sign In';
         }
       } catch(e) {
-        err.textContent = '⚠️ Could not reach the server. Please check your connection.';
-        err.style.display = 'block';
-        btn.disabled = false;
-        btn.textContent = 'Send My Dashboard Link';
+        showError('Could not reach the server. Check your connection.');
+        btn.disabled = false; btn.textContent = 'Sign In';
       }
     }
 
-    // Auto-focus email field
-    document.getElementById('emailInput').focus();
+    async function doRegister() {
+      const email    = document.getElementById('regEmail').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const confirm  = document.getElementById('regPassword2').value;
+      const btn      = document.getElementById('registerBtn');
+      document.getElementById('errorMsg').style.display = 'none';
+      if (!email || !email.includes('@')) { showError('Enter a valid email.'); return; }
+      if (password.length < 8) { showError('Password must be at least 8 characters.'); return; }
+      if (password !== confirm) { showError('Passwords do not match.'); return; }
+      btn.disabled = true; btn.textContent = 'Creating account…';
+      try {
+        const res  = await fetch('/api/auth/register', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          storeAndRedirect(data.token);
+        } else {
+          showError(data.detail || 'Registration failed. Please try again.');
+          btn.disabled = false; btn.textContent = 'Create Account';
+        }
+      } catch(e) {
+        showError('Could not reach the server. Check your connection.');
+        btn.disabled = false; btn.textContent = 'Create Account';
+      }
+    }
+
+    document.getElementById('loginEmail').focus();
   </script>
 </body>
 </html>
