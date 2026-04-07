@@ -240,6 +240,11 @@ class CheckoutRequest(BaseModel):
     message: str
     sender: str = "InviteForge"
 
+class PhoneCheckoutRequest(BaseModel):
+    event_id: str
+    auth_token: str = ""
+    method: str = "phone_sms"  # phone_sms | phone_whatsapp
+
 # ── HELPERS ──
 def format_number(raw: str) -> Optional[str]:
     num = raw.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
@@ -962,6 +967,50 @@ async def create_checkout(req: CheckoutRequest, request: Request):
         cancel_url=f"{base}/app/?cancelled=1&event={req.event_id}",
         metadata={"event_id": req.event_id},
     )
+    return {"checkout_url": session.url}
+
+
+@app.post("/api/create-phone-checkout")
+async def create_phone_checkout(req: PhoneCheckoutRequest, request: Request):
+    """Create a £25 flat Stripe Checkout for phone-based send (SMS or WhatsApp from user's own phone)."""
+    events = load_events()
+    if req.event_id not in events:
+        raise HTTPException(404, detail="Event not found")
+    stored_token = events[req.event_id].get("auth_token", "")
+    if stored_token and req.auth_token != stored_token:
+        raise HTTPException(403, detail="Unauthorized")
+
+    if TEST_MODE or not stripe:
+        raise HTTPException(400, detail="Not needed in test mode")
+
+    event_name = events[req.event_id].get("name", "Your Event")
+    method_label = "SMS" if req.method == "phone_sms" else "WhatsApp"
+    base = get_base_url(request)
+
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        line_items=[{
+            "price_data": {
+                "currency": "gbp",
+                "product_data": {
+                    "name": f"InviteForge — Send from My Phone ({method_label})",
+                    "description": f"Send personalised invites for {event_name} from your own phone. Zero spam filtering — 100% deliverability.",
+                },
+                "unit_amount": 2500,  # £25.00
+            },
+            "quantity": 1,
+        }],
+        mode="payment",
+        success_url=f"{base}/app/?sent=1&event={req.event_id}&method={req.method}",
+        cancel_url=f"{base}/app/?cancelled=1&event={req.event_id}",
+        metadata={"event_id": req.event_id, "method": req.method, "type": "phone_send"},
+    )
+
+    # Record that phone send was purchased
+    events[req.event_id]["phone_send_method"] = req.method
+    events[req.event_id]["phone_checkout_id"] = session.id
+    save_events(events)
+
     return {"checkout_url": session.url}
 
 
