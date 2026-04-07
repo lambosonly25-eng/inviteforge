@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sign In — InviteForge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23c9a96e'/><text x='50' y='68' font-size='54' text-anchor='middle' fill='%230a0e1a' font-family='serif' font-weight='bold'>IF</text></svg>"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold: #c9a96e; --gold-light: #e8d5a3;
+      --navy: #0a0e1a; --navy-mid: #111827;
+      --white: #f8f6f0; --grey: #9ca3af;
+      --border: rgba(255,255,255,0.08);
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--navy);
+      color: var(--white);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 40px;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--gold); text-decoration: none; }
+    .logo span { color: var(--white); }
+    .back-link { font-size: 13px; color: var(--grey); text-decoration: none; transition: color 0.2s; }
+    .back-link:hover { color: var(--gold); }
+
+    /* ── MAIN ── */
+    main {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 40px 20px;
+    }
+    .card {
+      width: 100%; max-width: 440px;
+      background: var(--navy-mid);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 44px;
+    }
+    .card-icon { font-size: 40px; margin-bottom: 20px; }
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 30px; font-weight: 700;
+      color: var(--white); margin-bottom: 10px;
+    }
+    .card-sub { font-size: 15px; color: var(--grey); line-height: 1.6; margin-bottom: 36px; }
+
+    label {
+      display: block; font-size: 12px; font-weight: 600;
+      color: var(--gold); letter-spacing: 0.5px; text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    input[type="email"] {
+      width: 100%; padding: 14px 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 10px; color: var(--white);
+      font-family: 'Inter', sans-serif; font-size: 15px;
+      outline: none; transition: border-color 0.2s;
+      margin-bottom: 16px;
+    }
+    input[type="email"]:focus { border-color: var(--gold); }
+    input[type="email"]::placeholder { color: rgba(156,163,175,0.4); }
+
+    button {
+      width: 100%; padding: 16px;
+      background: var(--gold); color: var(--navy);
+      font-size: 15px; font-weight: 700;
+      border: none; border-radius: 10px;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: all 0.2s;
+    }
+    button:hover { background: var(--gold-light); transform: translateY(-1px); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .error {
+      display: none; margin-bottom: 16px;
+      padding: 12px 16px; border-radius: 8px;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #f87171; font-size: 13px;
+    }
+
+    /* ── SUCCESS STATE ── */
+    .success { display: none; text-align: center; padding: 8px 0; }
+    .success-icon { font-size: 52px; margin-bottom: 20px; }
+    .success-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px; color: var(--gold); margin-bottom: 12px;
+    }
+    .success-body { font-size: 15px; color: var(--grey); line-height: 1.7; }
+    .success-body strong { color: var(--white); }
+
+    /* ── DIVIDER ── */
+    .divider {
+      display: flex; align-items: center; gap: 12px;
+      margin: 28px 0; color: var(--grey); font-size: 12px;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    .new-event-link {
+      display: block; text-align: center;
+      padding: 14px; border-radius: 10px;
+      border: 1px solid var(--border);
+      color: var(--grey); font-size: 14px; font-weight: 500;
+      text-decoration: none; transition: all 0.2s;
+    }
+    .new-event-link:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center; padding: 28px;
+      font-size: 12px; color: rgba(255,255,255,0.2);
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--gold); text-decoration: none; opacity: 0.7; }
+    footer a:hover { opacity: 1; }
+
+    @media (max-width: 480px) {
+      header { padding: 16px 20px; }
+      .card { padding: 36px 28px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="/" class="logo">Invite<span>Forge</span></a>
+    <a href="/app/" class="back-link">← Create a new invitation</a>
+  </header>
+
+  <main>
+    <div class="card">
+      <!-- LOGIN FORM -->
+      <div id="loginForm">
+        <div class="card-icon">✉️</div>
+        <div class="card-title">Access your dashboard</div>
+        <div class="card-sub">Enter the email you used when creating your event. We'll send you a magic link — no password needed.</div>
+
+        <div class="error" id="errorMsg"></div>
+
+        <label for="emailInput">Your email address</label>
+        <input type="email" id="emailInput" placeholder="you@example.com" autocomplete="email" onkeydown="if(event.key==='Enter')sendLink()"/>
+
+        <button id="submitBtn" onclick="sendLink()">Send My Dashboard Link</button>
+
+        <div class="divider">or</div>
+        <a href="/app/" class="new-event-link">✨ Create a new event</a>
+      </div>
+
+      <!-- SUCCESS STATE -->
+      <div class="success" id="successState">
+        <div class="success-icon">💌</div>
+        <div class="success-title">Check your inbox</div>
+        <div class="success-body">
+          We've sent a dashboard link to <strong id="sentEmail"></strong>.<br/><br/>
+          Click the link in the email to jump straight into your event dashboard. It might take a minute or two to arrive.
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    © 2026 InviteForge &nbsp;·&nbsp;
+    <a href="/privacy">Privacy</a> &nbsp;·&nbsp;
+    <a href="/terms">Terms</a> &nbsp;·&nbsp;
+    <a href="mailto:support@inviteforge.co.uk">support@inviteforge.co.uk</a>
+  </footer>
+
+  <script>
+    async function sendLink() {
+      const email = document.getElementById('emailInput').value.trim();
+      const btn = document.getElementById('submitBtn');
+      const err = document.getElementById('errorMsg');
+
+      err.style.display = 'none';
+      if (!email || !email.includes('@')) {
+        err.textContent = '⚠️ Please enter a valid email address.';
+        err.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          document.getElementById('loginForm').style.display = 'none';
+          document.getElementById('sentEmail').textContent = email;
+          document.getElementById('successState').style.display = 'block';
+        } else {
+          err.textContent = '⚠️ ' + (data.detail || 'Something went wrong. Please try again.');
+          err.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Send My Dashboard Link';
+        }
+      } catch(e) {
+        err.textContent = '⚠️ Could not reach the server. Please check your connection.';
+        err.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Send My Dashboard Link';
+      }
+    }
+
+    // Auto-focus email field
+    document.getElementById('emailInput').focus();
+  </script>
+</body>
+</html>
