@@ -1,7 +1,6 @@
 """
 InviteForge Backend — FastAPI
 Handles event creation, invite pages, SMS sending, RSVP tracking, payments
-v2
 """
 
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
@@ -82,14 +81,10 @@ def get_client_ip(request: Request) -> str:
     return forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
 
 # ── EMAIL ──
-_email_last_error: str = ""
-
 def send_email(to: str, subject: str, html_body: str) -> bool:
     """Send email via Resend API. Returns True on success."""
-    global _email_last_error
     api_key = os.getenv("RESEND_API_KEY", "") or RESEND_API_KEY
     if not api_key or not to:
-        _email_last_error = f"no_key={not api_key} no_to={not to}"
         return False
     import urllib.request as _req, ssl as _ssl
     body = json.dumps({"from": FROM_EMAIL, "to": [to], "subject": subject, "html": html_body}).encode()
@@ -100,13 +95,8 @@ def send_email(to: str, subject: str, html_body: str) -> bool:
                                 "Accept": "application/json"})
     try:
         _req.urlopen(req, timeout=10)
-        _email_last_error = ""
         return True
-    except _req.HTTPError as e:
-        _email_last_error = f"HTTP {e.code}: {e.read().decode()[:300]}"
-        return False
-    except Exception as e:
-        _email_last_error = str(e)[:200]
+    except Exception:
         return False
 
 def build_magic_link_email(event: dict, event_id: str, auth_token: str) -> str:
@@ -774,9 +764,7 @@ async def service_worker():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "InviteForge API",
-            "resend_key_set": bool(os.getenv("RESEND_API_KEY", "") or RESEND_API_KEY),
-            "resend_key_len": len(os.getenv("RESEND_API_KEY", "") or RESEND_API_KEY)}
+    return {"status": "ok", "service": "InviteForge API"}
 
 @app.get("/api/config")
 async def get_config():
@@ -1147,7 +1135,7 @@ async def resend_magic_link(event_id: str, request: Request):
     if not ev.get("host_email") or not auth_token:
         raise HTTPException(400, detail="No email address on file for this event.")
     ok = send_magic_link_email(ev, event_id, auth_token)
-    return {"success": ok, "debug_error": _email_last_error if not ok else ""}
+    return {"success": ok}
 
 
 @app.get("/api/event/{event_id}/status")
