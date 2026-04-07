@@ -1,0 +1,35 @@
+{
+  "name": "InviteForge",
+  "short_name": "InviteForge",
+  "description": "Luxury digital invitations by SMS — create, send and track RSVPs in minutes",
+  "start_url": "/app/",
+  "display": "standalone",
+  "background_color": "#0a0e1a",
+  "theme_color": "#c9a96e",
+  "orientation": "portrait-primary",
+  "lang": "en-GB",
+  "categories": ["lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJz48cmVjdCB3aWR0aD0nNTEyJyBoZWlnaHQ9JzUxMicgcng9JzgwJyBmaWxsPSclMjNjOWE5NmUnLz48dGV4dCB4PScyNTYnIHk9JzM0MCcgZm9udC1zaXplPScyNjAnIHRleHQtYW5jaG9yPSdtaWRkbGUnIGZpbGw9JyUyMzBhMGUxYScgZm9udC1mYW1pbHk9J3NlcmlmJyBmb250LXdlaWdodD0nYm9sZCc+SUY8L3RleHQ+PC9zdmc+",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJz48cmVjdCB3aWR0aD0nNTEyJyBoZWlnaHQ9JzUxMicgcng9JzgwJyBmaWxsPSclMjNjOWE5NmUnLz48dGV4dCB4PScyNTYnIHk9JzM0MCcgZm9udC1zaXplPScyNjAnIHRleHQtYW5jaG9yPSdtaWRkbGUnIGZpbGw9JyUyMzBhMGUxYScgZm9udC1mYW1pbHk9J3NlcmlmJyBmb250LXdlaWdodD0nYm9sZCc+SUY8L3RleHQ+PC9zdmc+",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/assets/screenshot.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "label": "Create your event invitation in 6 steps",
+      "form_factor": "wide"
+    }
+  ]
+}
