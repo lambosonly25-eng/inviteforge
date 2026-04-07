@@ -473,8 +473,8 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
       <div style="color:#c9a96e;font-size:12px;letter-spacing:3px;text-transform:uppercase;">Loading your invitation</div>
     </div>
   </div>
-  <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-  <script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');l.style.opacity='0';setTimeout(function(){l.style.display='none'},600);});</script>
+  <style>@keyframes spin{{to{{transform:rotate(360deg)}}}}</style>
+  <script>window.addEventListener('load',function(){{var l=document.getElementById('pageLoader');l.style.opacity='0';setTimeout(function(){{l.style.display='none'}},600);}});</script>
 
   <section class="hero">
     <div class="hero-media" id="heroMedia">{HERO_MEDIA}</div>
