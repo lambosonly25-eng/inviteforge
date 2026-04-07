@@ -197,6 +197,7 @@ class EventCreateRequest(BaseModel):
     message: str = ""
     sender: str = "InviteForge"
     media_url: str = ""
+    guests: list = []  # [{name, number}] — stored server-side for account isolation
 
 class RSVPRequest(BaseModel):
     guest_name: str = ""
@@ -204,6 +205,11 @@ class RSVPRequest(BaseModel):
     guests_count: int = 1
     dietary: str = ""
     message: str = ""
+
+class SaveGuestsRequest(BaseModel):
+    event_id: str
+    auth_token: str = ""
+    guests: list  # [{name, number}]
 
 class CheckoutRequest(BaseModel):
     event_id: str
@@ -782,9 +788,9 @@ async def create_event(req: EventCreateRequest, request: Request):
         "created": datetime.now().isoformat(),
         "sent": False,
         "rsvps": [],
+        "guests": req.guests,  # [{name, number}] stored server-side per account
     }
     save_events(events)
-    # Send magic link email immediately so host can bookmark their dashboard
     if req.host_email:
         send_magic_link_email(events[event_id], event_id, auth_token)
     return {"event_id": event_id, "invite_url": invite_url, "auth_token": auth_token}
@@ -1143,12 +1149,42 @@ async def handle_rsvp(event_id: str, data: RSVPRequest, request: Request):
     return {"success": True, "message": "RSVP received", "updated": updated}
 
 
-@app.get("/api/event/{event_id}/rsvps")
-async def get_rsvps(event_id: str):
+@app.post("/api/event/{event_id}/guests")
+async def save_guests(event_id: str, req: SaveGuestsRequest, request: Request):
+    """Store guest list server-side so it's tied to the account, not just the browser."""
     events = load_events()
     event = events.get(event_id)
     if not event:
         raise HTTPException(404, detail="Event not found")
+    # Verify ownership via auth_token OR JWT
+    user_id = auth_module.get_current_user_id(request)
+    stored_token = event.get("auth_token", "")
+    owns_via_jwt = user_id and event.get("user_id") == user_id
+    owns_via_token = stored_token and req.auth_token == stored_token
+    if not owns_via_jwt and not owns_via_token:
+        raise HTTPException(403, detail="Not authorised for this event")
+    if len(req.guests) > 500:
+        raise HTTPException(400, detail="Maximum 500 guests per event")
+    events[event_id]["guests"] = req.guests
+    save_events(events)
+    return {"saved": len(req.guests)}
+
+
+@app.get("/api/event/{event_id}/rsvps")
+async def get_rsvps(event_id: str, token: str = "", request: Request = None):
+    events = load_events()
+    event = events.get(event_id)
+    if not event:
+        raise HTTPException(404, detail="Event not found")
+    # Ownership check: valid auth_token OR matching JWT user_id
+    user_id = auth_module.get_current_user_id(request) if request else None
+    stored_token = event.get("auth_token", "")
+    owns_via_jwt = user_id and event.get("user_id") == user_id
+    owns_via_token = stored_token and (token == stored_token)
+    if not owns_via_jwt and not owns_via_token:
+        # Fallback: allow if event has no user_id and no auth_token (legacy anonymous)
+        if event.get("user_id") or stored_token:
+            raise HTTPException(403, detail="Not authorised for this event")
     rsvps = event.get("rsvps", [])
     attending = [r for r in rsvps if r.get("attending") == "yes"]
     declined = [r for r in rsvps if r.get("attending") == "no"]
@@ -1253,9 +1289,11 @@ async def get_user_events(request: Request):
                 "date":       e.get("date"),
                 "venue":      e.get("venue"),
                 "invite_url": e.get("invite_url"),
+                "auth_token": e.get("auth_token", ""),
                 "rsvp_count": len(e.get("rsvps", [])),
                 "sent":       e.get("sent", False),
                 "created":    e.get("created"),
+                "guests":     e.get("guests", []),
             }
             for e in events
         ]
