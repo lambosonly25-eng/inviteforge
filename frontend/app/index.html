@@ -1173,67 +1173,101 @@
       // Create the event on backend — only once. If we already have an eventId, just reload the iframe.
       const sampleName = state.guests.length > 0 ? state.guests[0].name : 'Guest';
       if (!state.eventId) {
-        try {
-          document.getElementById('inviteCreating').style.display = 'block';
-          document.getElementById('invitePreviewWrap').style.display = 'none';
-          const _jwt = localStorage.getItem('if_jwt') || '';
-          const res = await fetch('/api/events', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json', ...(_jwt ? {'Authorization': 'Bearer ' + _jwt} : {})},
-            body: JSON.stringify({
-              name: document.getElementById('eventName').value || 'Your Event',
-              type: document.getElementById('eventType').value || '',
-              date: document.getElementById('eventDate').value || '',
-              time: document.getElementById('eventTime').value || '',
-              venue: document.getElementById('eventVenue').value || '',
-              rsvp_deadline: document.getElementById('rsvpDeadline')?.value || '',
-              host_email: document.getElementById('hostEmail')?.value?.trim() || '',
-              template: state.template,
-              message: document.getElementById('messageText').value || '',
-              sender: document.getElementById('senderName').value || 'InviteForge',
-              media_url: state.mediaUrl || '',
-              guests: state.guests.filter(g => g.valid).map(g => ({name: g.name, number: g.number})),
-            })
-          });
-          const data = await res.json();
-          state.eventId = data.event_id;
-          state.inviteUrl = data.invite_url;
-          state.authToken = data.auth_token || '';
-          state.eventName = document.getElementById('eventName').value || '';
-          sessionStorage.setItem('if_event_id', data.event_id);
-          sessionStorage.setItem('if_invite_url', data.invite_url);
-          sessionStorage.setItem('if_auth_token', data.auth_token || '');
-          localStorage.setItem('if_event_id', data.event_id);
-          localStorage.setItem('if_invite_url', data.invite_url);
-          localStorage.setItem('if_auth_token', data.auth_token || '');
-          localStorage.setItem('if_event_name', state.eventName);
+        const _createEventPayload = () => ({
+          name: document.getElementById('eventName').value || 'Your Event',
+          type: document.getElementById('eventType').value || '',
+          date: document.getElementById('eventDate').value || '',
+          time: document.getElementById('eventTime').value || '',
+          venue: document.getElementById('eventVenue').value || '',
+          rsvp_deadline: document.getElementById('rsvpDeadline')?.value || '',
+          host_email: document.getElementById('hostEmail')?.value?.trim() || '',
+          template: state.template,
+          message: document.getElementById('messageText').value || '',
+          sender: document.getElementById('senderName').value || 'InviteForge',
+          media_url: state.mediaUrl || '',
+          guests: state.guests.filter(g => g.valid).map(g => ({name: g.name, number: g.number})),
+        });
 
-          const iframeSrc = data.invite_url + '?name=' + encodeURIComponent(sampleName);
-          document.getElementById('inviteFrame').src = iframeSrc;
-          document.getElementById('inviteOpenBtn').href = iframeSrc;
-          document.getElementById('inviteCreating').style.display = 'none';
-          document.getElementById('invitePreviewWrap').style.display = 'block';
+        const creatingEl = document.getElementById('inviteCreating');
+        creatingEl.innerHTML = '<div style="color:#9ca3af;padding:24px;text-align:center;">⏳ Building your invite page…</div>';
+        creatingEl.style.display = 'block';
+        document.getElementById('invitePreviewWrap').style.display = 'none';
 
-          // Show email confirmation only when API confirms the email was sent
-          const hostEmailVal = document.getElementById('hostEmail')?.value?.trim();
-          const emailConfirmEl = document.getElementById('emailSentConfirm');
-          if (emailConfirmEl) {
-            if (hostEmailVal && data.email_sent) {
-              emailConfirmEl.textContent = `📧 Dashboard link sent to ${hostEmailVal}`;
-              emailConfirmEl.style.display = 'block';
+        // Retry loop — handles Render cold starts (server returns 503 HTML on first wake)
+        let _createAttempt = 0;
+        const _maxAttempts = 3;
+        while (_createAttempt < _maxAttempts) {
+          _createAttempt++;
+          try {
+            const _jwt = localStorage.getItem('if_jwt') || '';
+            const res = await fetch('/api/events', {
+              method: 'POST',
+              headers: {'Content-Type':'application/json', ...(_jwt ? {'Authorization': 'Bearer ' + _jwt} : {})},
+              body: JSON.stringify(_createEventPayload())
+            });
+
+            if (!res.ok) {
+              const errBody = await res.text();
+              // 503 from Render infrastructure during cold start — retry
+              if ((res.status === 503 || res.status === 502) && _createAttempt < _maxAttempts) {
+                creatingEl.innerHTML = `<div style="color:#9ca3af;padding:24px;text-align:center;">⏳ Server waking up… (${_createAttempt}/${_maxAttempts})</div>`;
+                await new Promise(r => setTimeout(r, 4000));
+                continue;
+              }
+              throw new Error(`Server error ${res.status}`);
+            }
+
+            const data = await res.json();
+            if (!data.event_id) throw new Error('Invalid response from server');
+
+            state.eventId = data.event_id;
+            state.inviteUrl = data.invite_url;
+            state.authToken = data.auth_token || '';
+            state.eventName = document.getElementById('eventName').value || '';
+            sessionStorage.setItem('if_event_id', data.event_id);
+            sessionStorage.setItem('if_invite_url', data.invite_url);
+            sessionStorage.setItem('if_auth_token', data.auth_token || '');
+            localStorage.setItem('if_event_id', data.event_id);
+            localStorage.setItem('if_invite_url', data.invite_url);
+            localStorage.setItem('if_auth_token', data.auth_token || '');
+            localStorage.setItem('if_event_name', state.eventName);
+
+            const iframeSrc = data.invite_url + '?name=' + encodeURIComponent(sampleName);
+            document.getElementById('inviteFrame').src = iframeSrc;
+            document.getElementById('inviteOpenBtn').href = iframeSrc;
+            creatingEl.style.display = 'none';
+            document.getElementById('invitePreviewWrap').style.display = 'block';
+
+            const hostEmailVal = document.getElementById('hostEmail')?.value?.trim();
+            const emailConfirmEl = document.getElementById('emailSentConfirm');
+            if (emailConfirmEl) {
+              if (hostEmailVal && data.email_sent) {
+                emailConfirmEl.textContent = `📧 Dashboard link sent to ${hostEmailVal}`;
+                emailConfirmEl.style.display = 'block';
+              } else {
+                emailConfirmEl.style.display = 'none';
+              }
+            }
+
+            const sender = document.getElementById('senderName').value || 'InviteForge';
+            const msg = document.getElementById('messageText').value || '';
+            const msgWithUrl = msg.replace(/https?:\/\/\S+/g, data.invite_url) || msg + '\n' + data.invite_url;
+            const smsPreview = msgWithUrl.replace('[Name]', sampleName).substring(0, 160);
+            document.getElementById('smsPrevSender').textContent = sender;
+            document.getElementById('smsPrevBody').textContent = smsPreview + (msgWithUrl.length > 160 ? '...' : '');
+            break; // success — exit retry loop
+
+          } catch(e) {
+            if (_createAttempt < _maxAttempts) {
+              creatingEl.innerHTML = `<div style="color:#9ca3af;padding:24px;text-align:center;">⏳ Server waking up… retrying (${_createAttempt}/${_maxAttempts})</div>`;
+              await new Promise(r => setTimeout(r, 4000));
             } else {
-              emailConfirmEl.style.display = 'none';
+              creatingEl.innerHTML = `<div style="color:#f59e0b;padding:24px;text-align:center;">
+                ⚠️ Could not reach the server after ${_maxAttempts} attempts.<br>
+                <button onclick="updateSummary()" style="margin-top:12px;padding:10px 24px;background:#c9a96e;color:#0a0e1a;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Try Again</button>
+              </div>`;
             }
           }
-
-          const sender = document.getElementById('senderName').value || 'InviteForge';
-          const msg = document.getElementById('messageText').value || '';
-          const msgWithUrl = msg.replace(/https?:\/\/\S+/g, data.invite_url) || msg + '\n' + data.invite_url;
-          const smsPreview = msgWithUrl.replace('[Name]', sampleName).substring(0, 160);
-          document.getElementById('smsPrevSender').textContent = sender;
-          document.getElementById('smsPrevBody').textContent = smsPreview + (msgWithUrl.length > 160 ? '...' : '');
-        } catch(e) {
-          document.getElementById('inviteCreating').innerHTML = '<div style="color:#f59e0b;padding:24px;">⚠️ Could not create invite — is the backend running?</div>';
         }
       } else {
         // Event already created — but verify it still exists on the server first
