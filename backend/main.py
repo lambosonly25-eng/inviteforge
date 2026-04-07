@@ -100,7 +100,8 @@ def send_email(to: str, subject: str, html_body: str) -> bool:
     try:
         _req.urlopen(req, timeout=10)
         return True
-    except Exception:
+    except Exception as e:
+        print(f"[ERROR] send_email to={to}: {type(e).__name__}: {e}")
         return False
 
 def build_magic_link_email(event: dict, event_id: str, auth_token: str) -> str:
@@ -618,7 +619,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
   </footer>
 
   <script>
-    const EVENT_ID = '{EVENT_ID}';
+    const EVENT_ID = {EVENT_ID};
     const urlParams = new URLSearchParams(window.location.search);
     const guestName = urlParams.get('name') || '';
     if (guestName) {{
@@ -633,10 +634,10 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
 
     // Build calendar links (Google + Apple/iCal)
     (function() {{
-      const rawDate = '{RAW_DATE}';
-      const rawTime = '{RAW_TIME}';
-      const eventName = '{EVENT_NAME_CAL}';
-      const venue = '{VENUE_CAL}';
+      const rawDate = {RAW_DATE};
+      const rawTime = {RAW_TIME};
+      const eventName = {EVENT_NAME_CAL};
+      const venue = {VENUE_CAL};
       if (!rawDate) return;
       try {{
         const d = rawDate.replace(/-/g, '');
@@ -977,7 +978,7 @@ def build_invite_page(event: dict, event_id: str) -> str:
     return INVITE_TEMPLATE.format(
         EVENT_NAME=event_name_safe,
         INVITE_TAG=html.escape(invite_tag),
-        EVENT_ID=html.escape(event_id),
+        EVENT_ID=json.dumps(event_id),
         HERO_GRADIENT=hero_gradient,
         HERO_MEDIA=hero_media,
         EVENT_DATE_FORMATTED=html.escape(date_time_str),
@@ -987,10 +988,10 @@ def build_invite_page(event: dict, event_id: str) -> str:
         VENUE_CARD=venue_card,
         TIME_CARD=time_card,
         DEADLINE_CARD=deadline_card,
-        RAW_DATE=html.escape(raw_date),
-        RAW_TIME=html.escape(raw_time),
-        EVENT_NAME_CAL=html.escape(event.get("name", "")),
-        VENUE_CAL=html.escape(venue),
+        RAW_DATE=json.dumps(raw_date),
+        RAW_TIME=json.dumps(raw_time),
+        EVENT_NAME_CAL=json.dumps(event.get("name", "")),
+        VENUE_CAL=json.dumps(venue),
     )
 
 
@@ -1199,8 +1200,8 @@ def _gallery_cleanup_loop():
                         f'from <strong>{ename}</strong> after 7 days.</p>'
                         f'<p style="color:#6b7280;font-size:13px;">Your approved gallery is untouched.</p></div>'
                     )
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[ERROR] gallery_cleanup_loop: {e}")
         time.sleep(86400)
 
 
@@ -1531,31 +1532,33 @@ async def stripe_webhook(request: Request):
                 if pending and not ev.get("pending_send_fired"):
                     events[event_id]["pending_send_fired"] = True
                     save_events(events)
-                    try:
-                        await fire_sms_blast(
-                            guests=pending.get("guests", []),
-                            message=pending.get("message", ""),
-                            sender=pending.get("sender", "InviteForge"),
-                            event_id=event_id,
-                        )
-                        # Send magic link email post-payment — "your invites are flying out"
-                        events_fresh = load_events()
-                        ev_fresh = events_fresh.get(event_id, {})
-                        auth_token = ev_fresh.get("auth_token", "")
-                        if auth_token:
-                            send_magic_link_email(ev_fresh, event_id, auth_token)
-                    except Exception as blast_err:
-                        print(f"[CRITICAL] fire_sms_blast failed for event {event_id}: {blast_err}")
-                        host_email = ev.get("host_email", "")
-                        if host_email:
-                            send_email(
-                                host_email,
-                                "Action required — invites failed to send",
-                                f'<div style="font-family:Arial,sans-serif;padding:24px;max-width:500px;">'
-                                f'<p style="font-size:16px;">Your payment was processed successfully, but there was a technical error sending your SMS invitations.</p>'
-                                f'<p>Please reply to this email or contact us — we will resolve it immediately. Quote event ID: <strong>{html.escape(event_id)}</strong></p>'
-                                f'</div>'
+                    async def _blast_and_notify(ev=ev, event_id=event_id, pending=pending):
+                        try:
+                            await fire_sms_blast(
+                                guests=pending.get("guests", []),
+                                message=pending.get("message", ""),
+                                sender=pending.get("sender", "InviteForge"),
+                                event_id=event_id,
                             )
+                            # Send magic link email post-payment — "your invites are flying out"
+                            events_fresh = load_events()
+                            ev_fresh = events_fresh.get(event_id, {})
+                            auth_token = ev_fresh.get("auth_token", "")
+                            if auth_token:
+                                send_magic_link_email(ev_fresh, event_id, auth_token)
+                        except Exception as blast_err:
+                            print(f"[CRITICAL] fire_sms_blast failed for event {event_id}: {blast_err}")
+                            host_email = ev.get("host_email", "")
+                            if host_email:
+                                send_email(
+                                    host_email,
+                                    "Action required — invites failed to send",
+                                    f'<div style="font-family:Arial,sans-serif;padding:24px;max-width:500px;">'
+                                    f'<p style="font-size:16px;">Your payment was processed successfully, but there was a technical error sending your SMS invitations.</p>'
+                                    f'<p>Please reply to this email or contact us — we will resolve it immediately. Quote event ID: <strong>{html.escape(event_id)}</strong></p>'
+                                    f'</div>'
+                                )
+                    asyncio.create_task(_blast_and_notify())
 
     return {"received": True}
 
