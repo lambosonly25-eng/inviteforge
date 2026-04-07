@@ -3,7 +3,7 @@ InviteForge Backend — FastAPI
 Handles event creation, invite pages, SMS sending, RSVP tracking, payments
 """
 
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Depends
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -710,6 +710,15 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
 
     function handlePhotoSelect(file) {{
       if (!file) return;
+      var ext = file.name.split('.').pop().toLowerCase();
+      if (ext === 'heic' || ext === 'heif') {{
+        var statusEl = document.getElementById('galleryUploadStatus');
+        if (statusEl) {{
+          statusEl.textContent = 'iPhone HEIC photos aren\u2019t supported. Open the photo in Photos app, tap Share \u2192 Save Image as JPEG, then upload.';
+          statusEl.style.color = '#f59e0b';
+        }}
+        return;
+      }}
       _galleryFile = file;
       var dropText = document.getElementById('dropZoneText');
       if (dropText) dropText.textContent = file.name;
@@ -737,6 +746,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
           var ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           canvas.toBlob(function(blob) {{
+            if (!blob) {{ return; }}
             _galleryFile = blob;
             var prev = document.getElementById('galleryPreviewWrap');
             var prevImg = document.getElementById('galleryPreviewImg');
@@ -1157,7 +1167,7 @@ def _save_photo_to_cdn(data: bytes, path: str) -> str:
 async def gallery_upload(
     event_id: str,
     file: UploadFile = File(...),
-    submitted_by: str = "",
+    submitted_by: str = Form(""),
     request: Request = None,
 ):
     ip = get_client_ip(request) if request else "unknown"
@@ -1181,6 +1191,8 @@ async def gallery_upload(
         "status": "pending", "declined_at": None,
     }
     event = events[event_id]
+    if len(event.get("gallery", [])) >= 100:
+        raise HTTPException(400, detail="Gallery is full (100 photo limit).")
     event.setdefault("gallery", []).append(photo)
     save_events(events)
     host_email = event.get("host_email", "")
