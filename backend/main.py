@@ -142,7 +142,17 @@ def send_email(to: str, subject: str, html_body: str) -> bool:
     return False
 
 def build_magic_link_email(event: dict, event_id: str, auth_token: str) -> str:
-    link = f"{PUBLIC_URL}/app/?event={event_id}&token={auth_token}"
+    # Embed a login JWT so clicking the link auto-logs the user in (no password needed)
+    login_token = ""
+    user_id = event.get("user_id")
+    if user_id:
+        user = db.get_user_by_id(user_id)
+        if user:
+            login_token = auth_module.create_token(user["id"], user["email"])
+    params = f"event={event_id}&token={auth_token}"
+    if login_token:
+        params += f"&login_token={urlquote(login_token, safe='')}"
+    link = f"{PUBLIC_URL}/app/?{params}"
     event_name = html.escape(event.get("name", "Your Event"))
     event_date = html.escape(event.get("date", ""))
     return f"""<!DOCTYPE html>
