@@ -31,7 +31,7 @@ app = FastAPI(title="InviteForge API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://inviteforge.onrender.com", "http://localhost:8080"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -46,7 +46,7 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 # ── CONFIG ──
-TEST_MODE            = os.getenv("TEST_MODE", "true").lower() == "true"
+TEST_MODE            = os.getenv("TEST_MODE", "false").lower() == "true"
 TWILIO_SID           = os.getenv("TWILIO_SID", "")
 TWILIO_TOKEN         = os.getenv("TWILIO_TOKEN", "")
 STRIPE_SECRET_KEY    = os.getenv("STRIPE_SECRET_KEY", "")
@@ -276,13 +276,13 @@ class PhoneCheckoutRequest(BaseModel):
 
 # ── HELPERS ──
 def format_number(raw: str) -> Optional[str]:
-    num = raw.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
-    if num.startswith("+"): return num
+    num = re.sub(r'[\s\-\(\)]', '', raw.strip())
+    if num.startswith("+"): return num                          # Already E.164
     if re.match(r'^44\d{10}$', num): return f"+{num}"          # 447712345678
-    if num.startswith("39") and len(num) >= 12: return f"+{num}"
-    if num.startswith("1") and len(num) == 11: return f"+{num}"
-    if num.startswith("7") and len(num) == 10: return f"+44{num}"
-    if num.startswith("07") and len(num) == 11: return f"+44{num[1:]}"
+    if re.match(r'^39\d{8,10}$', num): return f"+{num}"        # Italy: 39 + 8-10 digits
+    if re.match(r'^1\d{10}$', num): return f"+{num}"           # US/Canada: 1 + 10 digits
+    if re.match(r'^7\d{9}$', num): return f"+44{num}"          # UK mobile without leading 0
+    if re.match(r'^07\d{9}$', num): return f"+44{num[1:]}"     # UK mobile with leading 0
     return None
 
 def twilio_client():
@@ -1204,33 +1204,30 @@ async def upload_media(file: UploadFile = File(...), request: Request = None):
 
     safe_name = str(uuid.uuid4())[:8] + ext
 
-    # Try to store in GitHub repo for permanent CDN access
-    if GITHUB_TOKEN:
-        try:
-            import urllib.request as urllib_req, ssl, base64
-            encoded = base64.b64encode(data).decode()
-            body = json.dumps({
-                "message": f"Upload media: {safe_name}",
-                "content": encoded,
-            }).encode()
-            req = urllib_req.Request(
-                f"https://api.github.com/repos/lambosonly25-eng/inviteforge/contents/uploads/{safe_name}",
-                data=body, method="PUT",
-                headers={"Authorization": f"token {GITHUB_TOKEN}",
-                         "Content-Type": "application/json",
-                         "Accept": "application/vnd.github.v3+json"}
-            )
-            with urllib_req.urlopen(req) as r:
-                resp = json.load(r)
-            cdn_url = resp["content"]["download_url"]
-            return {"url": cdn_url, "filename": safe_name, "storage": "github"}
-        except Exception:
-            pass  # Fall through to local storage
-
-    # Fallback: local disk (ephemeral on Render, works locally)
-    dest = UPLOADS_DIR / safe_name
-    dest.write_bytes(data)
-    return {"url": f"/uploads/{safe_name}", "filename": safe_name, "storage": "local"}
+    # Store in GitHub repo for permanent CDN access — required for production (Render filesystem is ephemeral)
+    if not GITHUB_TOKEN:
+        raise HTTPException(500, detail="Media uploads not configured. Contact support.")
+    try:
+        import urllib.request as urllib_req, base64
+        encoded = base64.b64encode(data).decode()
+        body = json.dumps({
+            "message": f"Upload media: {safe_name}",
+            "content": encoded,
+        }).encode()
+        req = urllib_req.Request(
+            f"https://api.github.com/repos/lambosonly25-eng/inviteforge/contents/uploads/{safe_name}",
+            data=body, method="PUT",
+            headers={"Authorization": f"token {GITHUB_TOKEN}",
+                     "Content-Type": "application/json",
+                     "Accept": "application/vnd.github.v3+json"}
+        )
+        with urllib_req.urlopen(req) as r:
+            resp = json.load(r)
+        cdn_url = resp["content"]["download_url"]
+        return {"url": cdn_url, "filename": safe_name, "storage": "github"}
+    except Exception as e:
+        print(f"[ERROR] GitHub CDN upload failed for {safe_name}: {e}")
+        raise HTTPException(500, detail="Media upload failed. Please try again.")
 
 
 # ── GALLERY ──
@@ -1441,13 +1438,14 @@ async def send_invite(req: InviteRequest, request: Request):
     if req.event_id:
         events = load_events()
         ev = events.get(req.event_id)
-        if ev:
-            user_id = auth_module.get_current_user_id(request)
-            stored_token = ev.get("auth_token", "")
-            owns_via_jwt = user_id and ev.get("user_id") == user_id
-            owns_via_token = stored_token and req.auth_token == stored_token
-            if not owns_via_jwt and not owns_via_token:
-                raise HTTPException(403, detail="Not authorised for this event")
+        if not ev:
+            raise HTTPException(404, detail="Event not found")
+        user_id = auth_module.get_current_user_id(request)
+        stored_token = ev.get("auth_token", "")
+        owns_via_jwt = user_id and ev.get("user_id") == user_id
+        owns_via_token = stored_token and req.auth_token == stored_token
+        if not owns_via_jwt and not owns_via_token:
+            raise HTTPException(403, detail="Not authorised for this event")
     number = format_number(req.number)
     if not number:
         return {"success": False, "error": "Invalid number format"}
@@ -1470,9 +1468,12 @@ async def create_checkout(req: CheckoutRequest, request: Request):
     events = load_events()
     if req.event_id not in events:
         raise HTTPException(404, detail="Event not found")
-    # Verify auth token to prevent unauthorized checkout for someone else's event
+    # Verify ownership: JWT or valid auth_token (empty token never matches)
     stored_token = events[req.event_id].get("auth_token", "")
-    if stored_token and req.auth_token != stored_token:
+    user_id = auth_module.get_current_user_id(request)
+    owns_via_jwt = user_id and events[req.event_id].get("user_id") == user_id
+    owns_via_token = stored_token and req.auth_token == stored_token
+    if not owns_via_jwt and not owns_via_token:
         raise HTTPException(403, detail="Unauthorized")
 
     # Store pending payload in event so webhook can retrieve it
@@ -1521,8 +1522,8 @@ async def create_checkout(req: CheckoutRequest, request: Request):
             },
         ],
         mode="payment",
-        success_url=f"{base}/app/?sent=1&event={req.event_id}",
-        cancel_url=f"{base}/app/?cancelled=1&event={req.event_id}",
+        success_url=f"{base}/app/?token={stored_token}&event={req.event_id}&sent=1",
+        cancel_url=f"{base}/app/?token={stored_token}&event={req.event_id}&cancelled=1",
         metadata={"event_id": req.event_id},
     )
     return {"checkout_url": session.url}
@@ -1534,8 +1535,12 @@ async def create_phone_checkout(req: PhoneCheckoutRequest, request: Request):
     events = load_events()
     if req.event_id not in events:
         raise HTTPException(404, detail="Event not found")
+    # Verify ownership: JWT or valid auth_token (empty token never matches)
     stored_token = events[req.event_id].get("auth_token", "")
-    if stored_token and req.auth_token != stored_token:
+    user_id = auth_module.get_current_user_id(request)
+    owns_via_jwt = user_id and events[req.event_id].get("user_id") == user_id
+    owns_via_token = stored_token and req.auth_token == stored_token
+    if not owns_via_jwt and not owns_via_token:
         raise HTTPException(403, detail="Unauthorized")
 
     if TEST_MODE or not stripe:
@@ -1572,8 +1577,8 @@ async def create_phone_checkout(req: PhoneCheckoutRequest, request: Request):
             },
         ],
         mode="payment",
-        success_url=f"{base}/app/?sent=1&event={req.event_id}&method={req.method}",
-        cancel_url=f"{base}/app/?cancelled=1&event={req.event_id}",
+        success_url=f"{base}/app/?token={stored_token}&event={req.event_id}&sent=1&method={req.method}",
+        cancel_url=f"{base}/app/?token={stored_token}&event={req.event_id}&cancelled=1",
         metadata={"event_id": req.event_id, "method": req.method, "type": "phone_send"},
     )
 
@@ -1590,6 +1595,9 @@ async def stripe_webhook(request: Request):
     """Stripe calls this on payment.succeeded — fires the SMS blast."""
     if not stripe:
         raise HTTPException(500, detail="Stripe not configured")
+    if not STRIPE_WEBHOOK_SECRET:
+        print("[CRITICAL] stripe-webhook called but STRIPE_WEBHOOK_SECRET is not set — rejecting")
+        raise HTTPException(500, detail="Webhook secret not configured")
 
     payload = await request.body()
     sig = request.headers.get("stripe-signature", "")
