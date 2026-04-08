@@ -67,25 +67,32 @@ def init_db():
 
 # ── GIST SYNC ──
 
-def _gist_request(method: str, data: Optional[dict] = None) -> Optional[dict]:
+def _gist_request(method: str, data: Optional[dict] = None, retries: int = 1) -> Optional[dict]:
     if not _GIST_ID or not _GITHUB_TOKEN:
         return None
-    req = urllib.request.Request(
-        f"https://api.github.com/gists/{_GIST_ID}",
-        method=method,
-        headers={
-            "Authorization": f"token {_GITHUB_TOKEN}",
-            "Accept": "application/vnd.github.v3+json",
-            "Content-Type": "application/json",
-        },
-    )
-    if data is not None:
-        req.data = json.dumps(data).encode()
-    try:
-        with urllib.request.urlopen(req, timeout=15) as r:
-            return json.load(r)
-    except Exception:
-        return None
+    import time as _time
+    for attempt in range(retries):
+        req = urllib.request.Request(
+            f"https://api.github.com/gists/{_GIST_ID}",
+            method=method,
+            headers={
+                "Authorization": f"token {_GITHUB_TOKEN}",
+                "Accept": "application/vnd.github.v3+json",
+                "Content-Type": "application/json",
+            },
+        )
+        if data is not None:
+            req.data = json.dumps(data).encode()
+        try:
+            with urllib.request.urlopen(req, timeout=15) as r:
+                return json.load(r)
+        except Exception as e:
+            if attempt < retries - 1:
+                _time.sleep(2 ** attempt)  # 1s, 2s, 4s backoff
+                print(f"[WARN] Gist {method} attempt {attempt + 1} failed: {e} — retrying")
+            else:
+                print(f"[ERROR] Gist {method} failed after {retries} attempts: {e}")
+    return None
 
 
 def load_from_gist():
@@ -168,9 +175,10 @@ def save_to_gist():
                     "users.json":  {"content": json.dumps(users,  indent=2, default=str)},
                 }
             },
+            retries=3,
         )
         if result is None:
-            print("[ERROR] save_to_gist: Gist PATCH failed — data may not be persisted")
+            print("[CRITICAL] save_to_gist: Gist PATCH failed after 3 attempts — data NOT persisted, will be lost on restart")
 
     # Run in background thread so writes never block the request
     threading.Thread(target=_do_save, daemon=True).start()
