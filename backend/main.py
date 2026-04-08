@@ -227,6 +227,8 @@ class InviteRequest(BaseModel):
     number: str
     message: str
     sender: str = "InviteForge"
+    event_id: Optional[str] = None
+    auth_token: Optional[str] = ""
 
 class BulkInviteRequest(BaseModel):
     guests: list
@@ -1435,6 +1437,17 @@ async def send_invite(req: InviteRequest, request: Request):
     ip = get_client_ip(request)
     if not check_rate_limit(ip, max_calls=300, window_seconds=3600):
         raise HTTPException(429, detail="Rate limit reached. Please wait before sending more.")
+    # Ownership check: must supply valid auth_token or JWT for the event
+    if req.event_id:
+        events = load_events()
+        ev = events.get(req.event_id)
+        if ev:
+            user_id = auth_module.get_current_user_id(request)
+            stored_token = ev.get("auth_token", "")
+            owns_via_jwt = user_id and ev.get("user_id") == user_id
+            owns_via_token = stored_token and req.auth_token == stored_token
+            if not owns_via_jwt and not owns_via_token:
+                raise HTTPException(403, detail="Not authorised for this event")
     number = format_number(req.number)
     if not number:
         return {"success": False, "error": "Invalid number format"}
@@ -1677,7 +1690,20 @@ async def handle_rsvp(event_id: str, data: RSVPRequest, request: Request):
         dietary_str = f"<br/><strong>Dietary:</strong> {html.escape(data.dietary)}" if data.dietary else ""
         msg_str = f"<br/><strong>Message:</strong> {html.escape(data.message)}" if data.message else ""
         auth_token = events[event_id].get("auth_token", "")
-        dashboard_link = f"{PUBLIC_URL}/app/?event={event_id}&token={auth_token}" if auth_token else f"{PUBLIC_URL}/login"
+        # Embed login_token so host is auto-logged in when clicking the dashboard link
+        _ev_user_id = events[event_id].get("user_id")
+        _login_token = ""
+        if _ev_user_id:
+            _u = db.get_user_by_id(_ev_user_id)
+            if _u:
+                _login_token = auth_module.create_token(_u["id"], _u["email"])
+        if auth_token:
+            _dash_params = f"event={event_id}&token={auth_token}"
+            if _login_token:
+                _dash_params += f"&login_token={urlquote(_login_token, safe='')}"
+            dashboard_link = f"{PUBLIC_URL}/app/?{_dash_params}"
+        else:
+            dashboard_link = f"{PUBLIC_URL}/login"
         rsvp_email_html = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"/>
 <style>
