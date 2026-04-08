@@ -753,13 +753,13 @@
       }
     })();
 
-    // ── AUTH GATE — redirect to login unless JWT, magic link, or Stripe return ──
+    // ── AUTH GATE — redirect to login unless JWT or magic link (token+event in URL) ──
+    // Note: Stripe success URLs now include token= so post-payment returns are covered by hasMagicLink
     (function() {
       const p = new URLSearchParams(window.location.search);
       const hasMagicLink = p.get('token') && p.get('event');
-      const hasStripeReturn = p.get('sent') === '1';
       const hasJwt = !!localStorage.getItem('if_jwt');
-      if (!hasJwt && !hasMagicLink && !hasStripeReturn) {
+      if (!hasJwt && !hasMagicLink) {
         window.location.replace('/login');
       }
     })();
