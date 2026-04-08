@@ -741,6 +741,18 @@
   </div>
 
   <script>
+    // ── AUTO-LOGIN FROM EMAIL — store JWT from magic link URL param ──
+    (function() {
+      const p = new URLSearchParams(window.location.search);
+      const lt = p.get('login_token');
+      if (lt) {
+        localStorage.setItem('if_jwt', lt);
+        p.delete('login_token');
+        const qs = p.toString();
+        window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
+      }
+    })();
+
     // ── AUTH GATE — redirect to login unless JWT, magic link, or Stripe return ──
     (function() {
       const p = new URLSearchParams(window.location.search);
