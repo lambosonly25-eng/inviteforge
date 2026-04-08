@@ -85,24 +85,61 @@ def get_client_ip(request: Request) -> str:
     return forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
 
 # ── EMAIL ──
-def send_email(to: str, subject: str, html_body: str) -> bool:
-    """Send email via Resend API. Returns True on success."""
-    api_key = os.getenv("RESEND_API_KEY", "") or RESEND_API_KEY
-    if not api_key or not to:
-        return False
-    import urllib.request as _req, ssl as _ssl
-    body = json.dumps({"from": FROM_EMAIL, "to": [to], "subject": subject, "html": html_body}).encode()
+# Resend account owner — the only address Resend will deliver to until a custom domain is verified.
+_RESEND_ACCOUNT_EMAIL = "lambosonly25@gmail.com"
+
+def _resend_post(api_key: str, payload: dict) -> tuple[bool, str]:
+    """POST to Resend /emails. Returns (success, response_body)."""
+    import urllib.request as _req, urllib.error as _err
+    body = json.dumps(payload).encode()
     req = _req.Request("https://api.resend.com/emails", data=body, method="POST",
                        headers={"Authorization": f"Bearer {api_key}",
                                 "Content-Type": "application/json",
-                                "User-Agent": "python-urllib/3.11",
+                                "User-Agent": "InviteForge/1.0",
                                 "Accept": "application/json"})
     try:
-        _req.urlopen(req, timeout=10)
-        return True
+        with _req.urlopen(req, timeout=10) as r:
+            return True, r.read().decode()
+    except _err.HTTPError as e:
+        return False, e.read().decode()
     except Exception as e:
-        print(f"[ERROR] send_email to={to}: {type(e).__name__}: {e}")
+        return False, str(e)
+
+
+def send_email(to: str, subject: str, html_body: str) -> bool:
+    """Send email via Resend. Falls back to admin address if domain not verified yet."""
+    api_key = os.getenv("RESEND_API_KEY", "") or RESEND_API_KEY
+    if not api_key or not to:
         return False
+
+    # Try sending directly to the intended recipient first
+    ok, resp = _resend_post(api_key, {"from": FROM_EMAIL, "to": [to], "subject": subject, "html": html_body})
+    if ok:
+        return True
+
+    # If blocked because domain isn't verified, fall back to admin email with a wrapper
+    if "verify a domain" in resp or "validation_error" in resp:
+        print(f"[WARN] send_email: domain not verified — relaying {subject!r} intended for {to} via admin inbox")
+        wrapper_html = (
+            f'<div style="font-family:sans-serif;background:#fff3cd;padding:12px 16px;'
+            f'border-left:4px solid #f0ad4e;margin-bottom:20px;border-radius:4px;">'
+            f'<strong>⚠️ Relay:</strong> This email was intended for <strong>{html.escape(to)}</strong> '
+            f'but domain verification is pending. Forward it to them.</div>'
+        ) + html_body
+        ok2, resp2 = _resend_post(api_key, {
+            "from": FROM_EMAIL,
+            "to": [_RESEND_ACCOUNT_EMAIL],
+            "subject": f"[RELAY → {to}] {subject}",
+            "html": wrapper_html,
+        })
+        if ok2:
+            print(f"[INFO] Relay sent to {_RESEND_ACCOUNT_EMAIL} for {to}")
+            return True
+        print(f"[ERROR] Relay also failed: {resp2}")
+        return False
+
+    print(f"[ERROR] send_email to={to}: {resp}")
+    return False
 
 def build_magic_link_email(event: dict, event_id: str, auth_token: str) -> str:
     link = f"{PUBLIC_URL}/app/?event={event_id}&token={auth_token}"
