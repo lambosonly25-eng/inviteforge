@@ -1897,40 +1897,32 @@ async def get_event_status(event_id: str):
 
 @app.post("/api/debug/email-test")
 async def debug_email_test(request: Request):
-    """Admin-only: send a test email and return the full result. Protected by JWT."""
+    """Admin-only: test email delivery via send_email (with relay fallback). Protected by JWT."""
     user_id = auth_module.get_current_user_id(request)
     if not user_id:
         raise HTTPException(401, detail="Not authenticated")
-    import urllib.request as _req, ssl as _ssl, urllib.error as _err
-    api_key = os.getenv("RESEND_API_KEY", "") or RESEND_API_KEY
-    from_addr = os.getenv("FROM_EMAIL", FROM_EMAIL)
     user = db.get_user_by_id(user_id)
     to_email = user["email"] if user else None
     if not to_email:
         raise HTTPException(400, detail="No email for user")
-    body = json.dumps({
-        "from": from_addr,
-        "to": [to_email],
-        "subject": "InviteForge — Email Test",
-        "html": "<h2>Email delivery confirmed</h2><p>Your InviteForge email is working correctly.</p>"
-    }).encode()
-    req = _req.Request("https://api.resend.com/emails", data=body, method="POST",
-                       headers={"Authorization": f"Bearer {api_key}",
-                                "Content-Type": "application/json",
-                                "User-Agent": "InviteForge/1.0",
-                                "Accept": "application/json"})
-    try:
-        with _req.urlopen(req, timeout=15) as r:
-            resp_body = r.read().decode()
-            return {"success": True, "status": r.status, "response": resp_body,
-                    "to": to_email, "from": from_addr, "api_key_prefix": api_key[:8] + "..."}
-    except _err.HTTPError as e:
-        err_body = e.read().decode()
-        return {"success": False, "http_error": e.code, "response": err_body,
-                "to": to_email, "from": from_addr, "api_key_prefix": api_key[:8] + "..."}
-    except Exception as e:
-        return {"success": False, "error": str(e), "error_type": type(e).__name__,
-                "to": to_email, "from": from_addr, "api_key_prefix": api_key[:8] + "..."}
+    # Test 1: send to account owner directly (should always work)
+    ok_admin, resp_admin = _resend_post(
+        os.getenv("RESEND_API_KEY", "") or RESEND_API_KEY,
+        {"from": FROM_EMAIL, "to": [_RESEND_ACCOUNT_EMAIL],
+         "subject": "InviteForge — Email Delivery Test",
+         "html": f"<p>Test email. Intended for: <strong>{html.escape(to_email)}</strong></p>"}
+    )
+    # Test 2: full send_email with relay
+    ok_full = send_email(to_email, "InviteForge — Email Test (relay)", "<p>Test via send_email with relay fallback.</p>")
+    return {
+        "to_user_email": to_email,
+        "from": FROM_EMAIL,
+        "resend_account_email": _RESEND_ACCOUNT_EMAIL,
+        "direct_to_admin_ok": ok_admin,
+        "direct_to_admin_response": resp_admin,
+        "send_email_with_relay_ok": ok_full,
+        "api_key_prefix": (os.getenv("RESEND_API_KEY", "") or RESEND_API_KEY)[:8] + "...",
+    }
 
 
 if __name__ == "__main__":
