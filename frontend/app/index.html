@@ -338,6 +338,227 @@
       .template-grid { grid-template-columns: 1fr 1fr; }
       .send-method-cards { grid-template-columns: 1fr; }
     }
+
+    /* ══ AESTHETIC POLISH ══════════════════════════════════════════ */
+
+    /* Animations */
+    @keyframes stepFadeIn {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes stepPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(201,169,110,0.5); }
+      50%       { box-shadow: 0 0 0 6px rgba(201,169,110,0); }
+    }
+    @keyframes shimmer {
+      0%   { background-position: -400% center; }
+      100% { background-position: 400% center; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* Step content entrance */
+    .step-content.active { animation: stepFadeIn 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+
+    /* Header glass */
+    .app-header {
+      background: rgba(10,14,26,0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(201,169,110,0.1);
+    }
+
+    /* Logo shimmer on hover */
+    .logo {
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 40%, var(--gold) 60%);
+      background-size: 300% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      transition: background-position 0.5s;
+    }
+    .logo:hover { background-position: right center; }
+    .logo span {
+      background: linear-gradient(135deg, var(--white) 0%, rgba(248,246,240,0.85) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Progress step active pulse */
+    .step-circle.active {
+      border-color: var(--gold); color: var(--gold);
+      background: rgba(201,169,110,0.1);
+      animation: stepPulse 2.5s ease-in-out infinite;
+    }
+
+    /* Form inputs — gold glow on focus */
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201,169,110,0.12), 0 1px 4px rgba(0,0,0,0.2);
+    }
+    .form-input, .form-select, .form-textarea {
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    /* Step headings — subtle gradient */
+    .step-heading {
+      background: linear-gradient(135deg, #f8f6f0 60%, rgba(201,169,110,0.8) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Buttons — lifted feel */
+    .btn-next {
+      border-radius: 10px;
+      transition: all 0.25s cubic-bezier(0.175,0.885,0.32,1.275);
+      box-shadow: 0 2px 12px rgba(201,169,110,0.15);
+      position: relative; overflow: hidden;
+    }
+    .btn-next::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.15));
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .btn-next:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(201,169,110,0.35); }
+    .btn-next:hover::after { opacity: 1; }
+    .btn-next:active { transform: translateY(-1px); }
+
+    .btn-back { border-radius: 10px; transition: all 0.2s; }
+    .btn-back:hover { border-color: rgba(201,169,110,0.5); color: var(--gold); transform: translateX(-2px); }
+
+    /* Send button — gradient + glow */
+    .send-btn {
+      background: linear-gradient(135deg, #c9a96e 0%, #e8c87a 50%, #c9a96e 100%);
+      background-size: 200% auto;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(201,169,110,0.2);
+      transition: all 0.3s;
+    }
+    .send-btn:hover {
+      background-position: right center;
+      transform: translateY(-3px);
+      box-shadow: 0 14px 44px rgba(201,169,110,0.42);
+    }
+
+    /* Template thumbnails — taller + smoother */
+    .template-thumb { height: 116px; transition: transform 0.2s; }
+    .template-option:hover .template-thumb { transform: scale(1.02); }
+    .template-option { transition: all 0.25s cubic-bezier(0.175,0.885,0.32,1.275); border-radius: 14px; }
+    .template-option:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
+    .template-option.selected { box-shadow: 0 0 0 3px rgba(201,169,110,0.2), 0 8px 24px rgba(201,169,110,0.1); }
+
+    /* Tone options */
+    .tone-option { border-radius: 14px; transition: all 0.2s; background: rgba(255,255,255,0.01); }
+    .tone-option:hover { border-color: rgba(201,169,110,0.4); background: rgba(201,169,110,0.03); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+    .tone-option.selected { border-color: var(--gold); background: rgba(201,169,110,0.06); box-shadow: 0 0 0 3px rgba(201,169,110,0.08); }
+
+    /* Send method cards */
+    .send-card { border-radius: 16px; transition: all 0.25s cubic-bezier(0.175,0.885,0.32,1.275); }
+    .send-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); border-color: rgba(201,169,110,0.5); }
+    .send-card.selected { box-shadow: 0 0 0 3px rgba(201,169,110,0.15), 0 8px 24px rgba(201,169,110,0.1); }
+
+    /* Upload zone */
+    .upload-zone {
+      border-radius: 20px;
+      transition: all 0.3s cubic-bezier(0.175,0.885,0.32,1);
+    }
+    .upload-zone:hover, .upload-zone.dragging {
+      border-color: var(--gold);
+      background: rgba(201,169,110,0.04);
+      transform: scale(1.007);
+      box-shadow: 0 8px 40px rgba(201,169,110,0.08);
+    }
+
+    /* Dashboard stats — hover lift */
+    .dash-stat {
+      transition: all 0.2s ease;
+      cursor: default;
+    }
+    .dash-stat:hover {
+      border-color: rgba(201,169,110,0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+    .dash-stat.highlight:hover { box-shadow: 0 6px 24px rgba(201,169,110,0.1); }
+    .dash-stat.countdown { background: rgba(245,158,11,0.05); border-color: rgba(245,158,11,0.2); }
+
+    /* Segment buttons */
+    .seg-btn { transition: all 0.2s; }
+    .seg-btn:hover:not(.active) { border-color: rgba(201,169,110,0.3); color: var(--gold-light); }
+
+    /* Dash tabs */
+    .dash-tab { transition: all 0.2s; }
+    .dash-tab:hover:not(.active) { color: var(--white); }
+
+    /* Guest send rows */
+    .guest-send-row { transition: background 0.15s, border-color 0.15s; }
+    .guest-send-row:hover { background: rgba(255,255,255,0.035); border-color: rgba(255,255,255,0.1); }
+
+    /* Message preview box */
+    .message-preview {
+      border-radius: 16px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .message-preview:hover { border-color: rgba(201,169,110,0.35); box-shadow: 0 4px 20px rgba(201,169,110,0.06); }
+
+    /* Send summary rows */
+    .send-summary { border-radius: 18px; }
+    .send-summary-row:hover { background: rgba(255,255,255,0.02); }
+
+    /* Preview panel glass */
+    .app-preview {
+      background: rgba(17,24,39,0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    /* Preview phone mock */
+    .preview-phone {
+      background: #161616;
+      border: 3px solid #2a2a2a;
+      border-radius: 28px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+
+    /* Sending progress bar */
+    .sending-bar { border-radius: 100px; }
+
+    /* Hotel select */
+    .hotel-select { transition: border-color 0.2s, box-shadow 0.2s; }
+    .hotel-select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,169,110,0.12); outline: none; }
+
+    /* Scrollbar polish */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); border-radius: 100px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 100px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(201,169,110,0.3); }
+
+    /* Guest table rows hover */
+    .dashboard-table tr:hover td { background: rgba(255,255,255,0.015); }
+    .guest-table tr:hover td { background: rgba(255,255,255,0.015); }
+
+    /* Countdown banner */
+    .countdown-banner {
+      border-radius: 12px;
+      background: rgba(245,158,11,0.07);
+      border-color: rgba(245,158,11,0.18);
+      box-shadow: 0 2px 16px rgba(245,158,11,0.06);
+    }
+
+    /* Modal backdrop blur */
+    #phoneSendModal { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); background: rgba(0,0,0,0.75); }
+    #myEventsModal { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+
+    /* Phone modal inner */
+    .phone-modal-inner { border-radius: 24px; box-shadow: 0 32px 80px rgba(0,0,0,0.6); }
+
+    /* Guest count pills */
+    .guest-count-item { border-radius: 12px; transition: border-color 0.2s; }
+    .guest-count-item:hover { border-color: rgba(201,169,110,0.25); }
   </style>
 </head>
 <body>
