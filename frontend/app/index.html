@@ -199,13 +199,15 @@
     .log-line.info { color: var(--grey); }
 
     /* DASHBOARD */
-    .dashboard-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+    .dashboard-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
     .dash-stat {
       background: var(--navy-mid); border: 1px solid var(--border);
-      border-radius: 12px; padding: 20px 24px; text-align: center;
+      border-radius: 12px; padding: 18px 16px; text-align: center;
     }
-    .dash-stat .num { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 700; color: var(--gold); }
-    .dash-stat .label { font-size: 12px; color: var(--grey); margin-top: 4px; }
+    .dash-stat .num { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--gold); }
+    .dash-stat .label { font-size: 11px; color: var(--grey); margin-top: 4px; letter-spacing: 0.3px; }
+    .dash-stat.highlight { border-color: rgba(201,169,110,0.35); background: rgba(201,169,110,0.05); }
+    .dash-stat.countdown .num { color: #f59e0b; font-size: 32px; }
     .dashboard-table { width: 100%; border-collapse: collapse; }
     .dashboard-table th { padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--grey); text-transform: uppercase; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
     .dashboard-table td { padding: 14px 16px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
@@ -216,6 +218,35 @@
     .badge-yes { background: rgba(34,197,94,0.15); color: var(--green); }
     .badge-no { background: rgba(239,68,68,0.15); color: var(--red); }
     .badge-waiting { background: rgba(156,163,175,0.15); color: var(--grey); }
+    .badge-attend { background: rgba(201,169,110,0.12); color: var(--gold); }
+    /* Countdown banner */
+    .countdown-banner { display:flex; align-items:center; justify-content:center; gap:12px; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); border-radius:10px; padding:12px 20px; margin-bottom:20px; font-size:14px; font-weight:600; color:#f59e0b; }
+    /* Segment toggle */
+    .seg-toggle { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+    .seg-btn { padding:8px 18px; border-radius:100px; border:1px solid var(--border); background:transparent; color:var(--grey); font-size:12px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; transition:all 0.15s; }
+    .seg-btn.active { background:var(--gold); border-color:var(--gold); color:var(--navy); }
+    /* Dash tabs */
+    .dash-tabs { display:flex; gap:4px; margin-bottom:16px; border-bottom:1px solid var(--border); }
+    .dash-tab { padding:10px 20px; border:none; background:transparent; color:var(--grey); font-size:13px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all 0.15s; }
+    .dash-tab.active { color:var(--gold); border-bottom-color:var(--gold); }
+    /* Send list */
+    .send-section-header { font-size:11px; font-weight:700; letter-spacing:3px; text-transform:uppercase; padding:12px 0 8px; }
+    .send-section-header.pending { color:var(--gold); }
+    .send-section-header.done { color:var(--grey); }
+    .guest-send-row { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-radius:10px; margin-bottom:6px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); gap:12px; }
+    .guest-send-row.done-row { opacity:0.45; }
+    .guest-send-info .gname { font-size:14px; font-weight:600; }
+    .guest-send-info .gnum { font-size:12px; color:var(--grey); font-family:monospace; }
+    .send-btns { display:flex; gap:8px; flex-shrink:0; }
+    .invited-tag { font-size:11px; padding:3px 10px; border-radius:100px; background:rgba(34,197,94,0.1); color:var(--green); font-weight:600; }
+    .rsvpd-tag { font-size:11px; padding:3px 10px; border-radius:100px; background:rgba(201,169,110,0.12); color:var(--gold); font-weight:600; }
+    /* Dietary chips */
+    .dietary-chip { padding:6px 14px; border-radius:100px; font-size:12px; font-weight:600; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--white); display:inline-flex; gap:6px; align-items:center; }
+    .dietary-chip .dc-count { background:var(--gold); color:var(--navy); border-radius:100px; padding:1px 7px; font-size:11px; font-weight:700; }
+    /* Hotels */
+    .hotel-row { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-radius:10px; margin-bottom:6px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); gap:12px; }
+    .hotel-select { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:var(--white); font-family:'Inter',sans-serif; font-size:13px; padding:6px 10px; outline:none; cursor:pointer; }
+    .hotel-select option { background:#111827; }
 
     /* NAV BUTTONS */
     .step-nav { display: flex; gap: 12px; margin-top: 40px; }
@@ -300,7 +331,9 @@
       .app-body { grid-template-columns: 1fr; }
       .app-preview { display: none; }
       .app-main { padding: 32px 24px; }
-      .dashboard-stats { grid-template-columns: 1fr 1fr; }
+      .dashboard-stats { grid-template-columns: repeat(3, 1fr); }
+      .dash-tabs { overflow-x:auto; }
+      .seg-toggle { gap:6px; }
       .form-row { grid-template-columns: 1fr; }
       .template-grid { grid-template-columns: 1fr 1fr; }
       .send-method-cards { grid-template-columns: 1fr; }
@@ -409,7 +442,41 @@
         <div class="form-group">
           <label class="form-label">RSVP Deadline (optional)</label>
           <input class="form-input" id="rsvpDeadline" type="date" onchange="updatePreview()"/>
-          <div style="font-size:12px;color:var(--grey);margin-top:6px;">If set, this date shows on your invite page so guests know when to respond by.</div>
+          <div style="font-size:12px;color:var(--grey);margin-top:6px;">Shown on your invite page so guests know when to respond by.</div>
+        </div>
+        <!-- ── OPTIONAL EXTRAS ── -->
+        <div style="margin-top:8px;margin-bottom:20px;">
+          <div onclick="toggleExtras()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;">
+            <span style="font-size:14px;font-weight:600;color:var(--gold);">✨ Add extra details (dress code, hashtag, timeline…)</span>
+            <span id="extrasArrow" style="color:var(--grey);font-size:18px;">&#x25BE;</span>
+          </div>
+          <div id="extrasPanel" style="display:none;padding-top:16px;">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Dress Code (optional)</label>
+                <input class="form-input" id="dressCode" placeholder="e.g. Black Tie, Smart Casual"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Photo Hashtag (optional)</label>
+                <input class="form-input" id="hashtagInput" placeholder="e.g. #SarahAndTom2026"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Attendance Types (optional)</label>
+              <input class="form-input" id="attendanceTypes" placeholder="e.g. Day, Evening, Full Day &amp; Evening (comma-separated)"/>
+              <div style="font-size:12px;color:var(--grey);margin-top:6px;">Adds a selection on the RSVP form — useful for weddings with day/evening guests.</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Timeline of the Day (optional)</label>
+              <div style="font-size:12px;color:var(--grey);margin-bottom:10px;">Enter one entry per line: <strong>time | label</strong>  e.g. <em>1:00pm | Welcome drinks</em></div>
+              <textarea class="form-input" id="timelineInput" rows="5" placeholder="12:00pm | Ceremony begins&#10;1:00pm | Welcome drinks&#10;2:00pm | Lunch"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hotels (optional)</label>
+              <input class="form-input" id="hotelListInput" placeholder="e.g. Hilton, Marriott, Premier Inn (comma-separated)"/>
+              <div style="font-size:12px;color:var(--grey);margin-top:6px;">Adds a Hotels tab to your dashboard so you can assign guests to hotels and export.</div>
+            </div>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Upload Event Video or Photo (optional)</label>
@@ -662,32 +729,80 @@
       <!-- STEP 6 — DASHBOARD -->
       <div class="step-content" id="step6">
         <div class="step-heading">Live Dashboard 📊</div>
-        <div class="step-sub">Track every invite sent and every RSVP received in real time.</div>
-        <div class="dashboard-stats">
-          <div class="dash-stat"><div class="num" id="dSent">0</div><div class="label">Invites Sent</div></div>
-          <div class="dash-stat"><div class="num" id="dRsvp">0</div><div class="label">RSVPs Received</div></div>
-          <div class="dash-stat"><div class="num" id="dAttending">0</div><div class="label">Attending</div></div>
-          <div class="dash-stat"><div class="num" id="dFailed">0</div><div class="label">Failed Sends</div></div>
+        <div class="step-sub">Every invite. Every RSVP. Every guest — tracked in real time.</div>
+
+        <!-- Countdown banner -->
+        <div id="countdownBanner" class="countdown-banner" style="display:none;">
+          <span style="font-size:20px;">⏳</span>
+          <span id="countdownText"></span>
         </div>
+
+        <!-- Rich stats grid — 7 stats -->
+        <div class="dashboard-stats" style="grid-template-columns:repeat(4,1fr);">
+          <div class="dash-stat highlight"><div class="num" id="dInvited">—</div><div class="label">Invited</div></div>
+          <div class="dash-stat"><div class="num" id="dRsvp">0</div><div class="label">RSVPs</div></div>
+          <div class="dash-stat"><div class="num" id="dAttending" style="color:#22c55e;">0</div><div class="label">Attending</div></div>
+          <div class="dash-stat"><div class="num" id="dDeclined" style="color:#ef4444;">0</div><div class="label">Declined</div></div>
+        </div>
+        <div class="dashboard-stats" style="grid-template-columns:repeat(3,1fr);margin-top:0;">
+          <div class="dash-stat"><div class="num" id="dPending" style="color:#f59e0b;">—</div><div class="label">Pending</div></div>
+          <div class="dash-stat"><div class="num" id="dSeats">0</div><div class="label">Total Seats</div></div>
+          <div class="dash-stat countdown" id="dDaysStat" style="display:none;"><div class="num" id="dDays">—</div><div class="label">Days to Go</div></div>
+        </div>
+
+        <!-- Invite link bar -->
         <div id="dashInviteLink" style="display:none;background:rgba(201,169,110,0.06);border:1px solid rgba(201,169,110,0.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-          <div style="font-size:13px;color:var(--grey);">Your invite page: <span id="dashInviteUrl" style="color:var(--gold);font-weight:600;word-break:break-all;"></span></div>
-          <button onclick="copyInviteLink()" style="flex-shrink:0;padding:8px 16px;background:rgba(201,169,110,0.15);border:1px solid rgba(201,169,110,0.4);color:var(--gold);border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;" id="copyLinkBtn">📋 Copy Link</button>
+          <div style="font-size:13px;color:var(--grey);">Invite page: <span id="dashInviteUrl" style="color:var(--gold);font-weight:600;word-break:break-all;"></span></div>
+          <button onclick="copyInviteLink()" style="flex-shrink:0;padding:8px 16px;background:rgba(201,169,110,0.15);border:1px solid rgba(201,169,110,0.4);color:var(--gold);border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;" id="copyLinkBtn">📋 Copy</button>
         </div>
-        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-          <button onclick="openAddMoreGuests()" style="padding:10px 20px;background:rgba(201,169,110,0.12);border:1px solid rgba(201,169,110,0.4);color:var(--gold);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">➕ Add More Guests</button>
-          <button onclick="sendReminders('phone_sms')" style="padding:10px 20px;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--white);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">🔔 Remind via SMS</button>
-          <button onclick="sendReminders('phone_whatsapp')" style="padding:10px 20px;background:rgba(37,211,102,0.08);border:1px solid rgba(37,211,102,0.3);color:#25D366;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">🔔 Remind via WhatsApp</button>
-          <button onclick="exportCSV()" style="padding:10px 20px;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--white);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">📥 Export CSV</button>
-          <button onclick="startNewEvent()" style="padding:10px 20px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);color:var(--green);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">✨ New Event</button>
-          <button onclick="resendDashboardLink(this)" style="padding:10px 20px;background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--grey);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">📧 Resend My Dashboard Link</button>
+
+        <!-- Action buttons -->
+        <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+          <button onclick="openAddMoreGuests()" style="padding:10px 18px;background:rgba(201,169,110,0.12);border:1px solid rgba(201,169,110,0.4);color:var(--gold);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">➕ Add Guests</button>
+          <button onclick="openBulkReminder()" style="padding:10px 18px;background:rgba(37,211,102,0.08);border:1px solid rgba(37,211,102,0.3);color:#25D366;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">🔔 Remind Pending</button>
+          <button onclick="exportCSV()" style="padding:10px 18px;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--white);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">📥 Export CSV</button>
+          <button onclick="startNewEvent()" style="padding:10px 18px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);color:var(--green);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">✨ New Event</button>
+          <button onclick="resendDashboardLink(this)" style="padding:10px 18px;background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--grey);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">📧 Resend My Link</button>
         </div>
-        <div style="border-radius:12px;border:1px solid var(--border);overflow:hidden;">
-          <table class="dashboard-table">
-            <thead>
-              <tr><th>Guest</th><th>Number</th><th>Invite</th><th>RSVP</th><th>Attending</th><th>Dietary</th></tr>
-            </thead>
-            <tbody id="dashboardBody"></tbody>
-          </table>
+
+        <!-- Tabs: RSVPs | Send List | Hotels -->
+        <div class="dash-tabs">
+          <button class="dash-tab active" id="dtab-rsvps" onclick="switchDashTab('rsvps')">RSVPs</button>
+          <button class="dash-tab" id="dtab-send" onclick="switchDashTab('send')">📤 Send List</button>
+          <button class="dash-tab" id="dtab-hotels" onclick="switchDashTab('hotels')">🏨 Hotels</button>
+        </div>
+
+        <!-- RSVPs panel -->
+        <div id="dpanel-rsvps">
+          <div class="seg-toggle">
+            <button class="seg-btn active" id="seg-all" onclick="setSegment('all')">All</button>
+            <button class="seg-btn" id="seg-attending" onclick="setSegment('attending')">✓ Attending</button>
+            <button class="seg-btn" id="seg-declined" onclick="setSegment('declined')">✗ Declined</button>
+            <button class="seg-btn" id="seg-pending" onclick="setSegment('pending')">⏳ Pending</button>
+          </div>
+          <div style="border-radius:12px;border:1px solid var(--border);overflow:hidden;">
+            <table class="dashboard-table">
+              <thead><tr><th>Guest</th><th>RSVP</th><th>Seats</th><th>Dietary</th><th>Type</th><th>Time</th></tr></thead>
+              <tbody id="dashboardBody"></tbody>
+            </table>
+          </div>
+          <!-- Dietary breakdown -->
+          <div id="dietaryBreakdown" style="margin-top:20px;display:none;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;">Dietary Requirements</div>
+            <div id="dietaryChips" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+          </div>
+        </div>
+
+        <!-- Send List panel -->
+        <div id="dpanel-send" style="display:none;">
+          <div id="sendListContent" style="min-height:80px;"></div>
+        </div>
+
+        <!-- Hotels panel -->
+        <div id="dpanel-hotels" style="display:none;">
+          <div id="hotelsContent">
+            <div style="color:var(--grey);font-size:14px;padding:24px 0 8px;">Hotel assignments will appear here once hotels are configured for your event.</div>
+          </div>
         </div>
 
         <!-- PHOTO GALLERY PANEL -->
@@ -795,6 +910,16 @@
       const badge = document.getElementById('testModeBadge');
       if (badge) badge.style.display = c.test_mode ? 'block' : 'none';
     }).catch(() => {});
+
+    // ── EXTRAS PANEL TOGGLE ──
+    function toggleExtras() {
+      var panel = document.getElementById('extrasPanel');
+      var arrow = document.getElementById('extrasArrow');
+      if (!panel) return;
+      var open = panel.style.display !== 'none';
+      panel.style.display = open ? 'none' : 'block';
+      if (arrow) arrow.innerHTML = open ? '&#x25BE;' : '&#x25B4;';
+    }
 
     // ── SMS CHARACTER COUNTER ──
     function checkSmsLength() {
@@ -1191,6 +1316,20 @@
       // Create the event on backend — only once. If we already have an eventId, just reload the iframe.
       const sampleName = state.guests.length > 0 ? state.guests[0].name : 'Guest';
       if (!state.eventId) {
+        const _parseTimeline = () => {
+          var raw = (document.getElementById('timelineInput')?.value || '').trim();
+          if (!raw) return [];
+          return raw.split('\n').map(function(line) {
+            var parts = line.split('|');
+            if (parts.length < 2) return null;
+            return {time: parts[0].trim(), label: parts.slice(1).join('|').trim()};
+          }).filter(Boolean);
+        };
+        const _parseCommaList = (id) => {
+          var raw = (document.getElementById(id)?.value || '').trim();
+          if (!raw) return [];
+          return raw.split(',').map(function(s){return s.trim();}).filter(Boolean);
+        };
         const _createEventPayload = () => ({
           name: document.getElementById('eventName').value || 'Your Event',
           type: document.getElementById('eventType').value || '',
@@ -1204,6 +1343,12 @@
           sender: document.getElementById('senderName').value || 'InviteForge',
           media_url: state.mediaUrl || '',
           guests: state.guests.filter(g => g.valid).map(g => ({name: g.name, number: g.number})),
+          dress_code: (document.getElementById('dressCode')?.value || '').trim(),
+          hashtag: (document.getElementById('hashtagInput')?.value || '').trim(),
+          attendance_types: _parseCommaList('attendanceTypes'),
+          timeline: _parseTimeline(),
+          hotels_enabled: _parseCommaList('hotelListInput').length > 0,
+          hotel_list: _parseCommaList('hotelListInput'),
         });
 
         const creatingEl = document.getElementById('inviteCreating');
@@ -1548,118 +1693,296 @@
 
     // ── DASHBOARD ──
     let dashboardPollTimer = null;
+    let _currentSegment = 'all';
+    let _currentDashTab = 'rsvps';
+    let _dashRsvpData = null;
 
     async function buildDashboard() {
-      // Persist dashboard state to localStorage so user can return to it
       if (state.eventId) {
         localStorage.setItem('if_event_id', state.eventId);
         if (state.inviteUrl) localStorage.setItem('if_invite_url', state.inviteUrl);
         if (state.authToken) localStorage.setItem('if_auth_token', state.authToken);
         if (state.guests.length > 0) localStorage.setItem('if_guests_' + state.eventId, JSON.stringify(state.guests));
       }
-
-      // If we have no guest data (magic link return), fetch status from API
       if (state.guests.filter(g=>g.valid).length === 0 && state.sentCount == null && state.eventId) {
         try {
-          const statusRes = await fetch(`/api/event/${state.eventId}/status`);
+          const statusRes = await fetch('/api/event/' + state.eventId + '/status');
           if (statusRes.ok) {
-            const statusData = await statusRes.json();
-            if (statusData.sent_count != null) state.sentCount = statusData.sent_count;
-            if (statusData.failed_count != null) state.failedCount = statusData.failed_count;
-            if (statusData.invite_url && !state.inviteUrl) {
-              state.inviteUrl = statusData.invite_url;
-              sessionStorage.setItem('if_invite_url', statusData.invite_url);
-              localStorage.setItem('if_invite_url', statusData.invite_url);
+            const sd = await statusRes.json();
+            if (sd.sent_count != null) state.sentCount = sd.sent_count;
+            if (sd.failed_count != null) state.failedCount = sd.failed_count;
+            if (sd.invite_url && !state.inviteUrl) {
+              state.inviteUrl = sd.invite_url;
+              sessionStorage.setItem('if_invite_url', sd.invite_url);
+              localStorage.setItem('if_invite_url', sd.invite_url);
+            }
+            if (sd.countdown_days != null && sd.countdown_days >= 0) {
+              var dds = document.getElementById('dDaysStat');
+              var dd = document.getElementById('dDays');
+              if (dds && dd) { dd.textContent = sd.countdown_days; dds.style.display = 'block'; }
             }
           }
         } catch(e) {}
       }
-
-      document.getElementById('dSent').textContent = state.sentCount != null ? state.sentCount : state.guests.filter(g=>g.valid).length;
-      document.getElementById('dFailed').textContent = state.failedCount != null ? state.failedCount : 0;
-
-      // Show invite link bar
       if (state.inviteUrl) {
-        const bar = document.getElementById('dashInviteLink');
-        const urlEl = document.getElementById('dashInviteUrl');
+        var bar = document.getElementById('dashInviteLink');
+        var urlEl = document.getElementById('dashInviteUrl');
         if (bar && urlEl) { bar.style.display = 'flex'; urlEl.textContent = state.inviteUrl; }
       }
       renderDashboardTable({});
-      // Start live RSVP polling
       if (dashboardPollTimer) clearInterval(dashboardPollTimer);
       loadDashboardRsvps();
       dashboardPollTimer = setInterval(loadDashboardRsvps, 15000);
       loadGallery();
-      if (!window._galleryPollTimer) {
-        window._galleryPollTimer = setInterval(loadGallery, 30000);
-      }
+      if (!window._galleryPollTimer) window._galleryPollTimer = setInterval(loadGallery, 30000);
     }
 
     async function loadDashboardRsvps() {
       if (!state.eventId) return;
       try {
-        const _rsvpJwt = localStorage.getItem('if_jwt') || '';
-        const _rsvpToken = state.authToken || localStorage.getItem('if_auth_token') || '';
-        const _rsvpHeaders = _rsvpJwt ? {'Authorization': 'Bearer ' + _rsvpJwt} : {};
-        const res = await fetch(`/api/event/${state.eventId}/rsvps?token=${encodeURIComponent(_rsvpToken)}`, {headers: _rsvpHeaders});
-        const data = await res.json();
-        // Build lookup: guest_name → rsvp data
-        const rsvpMap = {};
-        (data.rsvps || []).forEach(r => {
-          rsvpMap[r.guest_name.toLowerCase()] = r;
-        });
-        const validGuests = state.guests.filter(g => g.valid);
-        const sentCount = validGuests.filter(g => g.sendStatus === 'sent').length;
-        const failedCount = validGuests.filter(g => g.sendStatus === 'failed').length;
-        document.getElementById('dSent').textContent = sentCount || state.sentCount || validGuests.length;
-        document.getElementById('dFailed').textContent = failedCount || state.failedCount || 0;
-        document.getElementById('dRsvp').textContent = data.total || 0;
-        document.getElementById('dAttending').textContent = data.attending || 0;
-        // Mark guests who have responded so reminder blast skips them
-        // Also store full RSVP data on guest object (needed for CSV export)
-        (data.rsvps || []).forEach(r => {
-          const g = validGuests.find(g => g.name.toLowerCase() === r.guest_name.toLowerCase());
+        var jwt = localStorage.getItem('if_jwt') || '';
+        var token = state.authToken || localStorage.getItem('if_auth_token') || '';
+        var headers = jwt ? {'Authorization': 'Bearer ' + jwt} : {};
+        var res = await fetch('/api/event/' + state.eventId + '/rsvps?token=' + encodeURIComponent(token), {headers: headers});
+        var data = await res.json();
+        _dashRsvpData = data;
+        var rsvpMap = {};
+        (data.rsvps || []).forEach(function(r) { rsvpMap[r.guest_name.toLowerCase()] = r; });
+        var serverGuests = data.guests || [];
+        if (serverGuests.length > 0 && state.guests.filter(function(g){return g.valid;}).length === 0) {
+          state.guests = serverGuests.map(function(g) {
+            return {name: g.name, number: g.number || '', valid: !!(g.number), invited_at: g.invited_at, hotel: g.hotel};
+          });
+        } else {
+          serverGuests.forEach(function(sg) {
+            var lg = state.guests.find(function(g) { return g.name.toLowerCase() === (sg.name||'').toLowerCase(); });
+            if (lg) { lg.invited_at = sg.invited_at; lg.hotel = sg.hotel; }
+          });
+        }
+        var validGuests = state.guests.filter(function(g){return g.valid;});
+        (data.rsvps || []).forEach(function(r) {
+          var g = validGuests.find(function(g){return g.name.toLowerCase() === r.guest_name.toLowerCase();});
           if (g) { g.rsvpReceived = true; g.rsvp = r; }
         });
+        var totalInvited = data.total_invited || validGuests.length;
+        var totalRsvps = data.total || 0;
+        var attending = data.attending || 0;
+        var declined = data.declined || 0;
+        var pending = totalInvited - totalRsvps;
+        var seats = data.total_guests || attending;
+        var countdown = data.countdown_days;
+        document.getElementById('dInvited').textContent = totalInvited || '—';
+        document.getElementById('dRsvp').textContent = totalRsvps;
+        document.getElementById('dAttending').textContent = attending;
+        document.getElementById('dDeclined').textContent = declined;
+        document.getElementById('dPending').textContent = pending >= 0 ? pending : '—';
+        document.getElementById('dSeats').textContent = seats;
+        if (countdown != null && countdown >= 0) {
+          var daysStat = document.getElementById('dDaysStat');
+          var daysEl = document.getElementById('dDays');
+          if (daysStat && daysEl) { daysEl.textContent = countdown; daysStat.style.display = 'block'; }
+          var banner = document.getElementById('countdownBanner');
+          var bannerText = document.getElementById('countdownText');
+          if (banner && bannerText) {
+            if (countdown === 0) bannerText.textContent = "Today's the day!";
+            else if (countdown === 1) bannerText.textContent = "Tomorrow is the big day!";
+            else bannerText.textContent = countdown + " days until the event";
+            banner.style.display = 'flex';
+          }
+        }
         renderDashboardTable(rsvpMap);
+        renderDietaryBreakdown(data.dietary_breakdown || {});
+        if (_currentDashTab === 'send') renderSendList();
+        if (_currentDashTab === 'hotels') renderHotels();
       } catch(e) {}
     }
 
     function renderDashboardTable(rsvpMap) {
-      const tbody = document.getElementById('dashboardBody');
-      tbody.innerHTML = state.guests.filter(g=>g.valid).map(g => {
-        const sendLabel = g.sendStatus === 'sent'
-          ? '✓ Sent'
-          : g.sendStatus === 'phone'
-            ? '📱 Via Phone'
-            : g.sendStatus === 'failed'
-              ? '✗ Failed'
-              : 'Queued';
-        const sendClass = g.sendStatus === 'sent' ? 'badge-sent'
-          : g.sendStatus === 'phone' ? 'badge-sent'
-          : g.sendStatus === 'failed' ? 'badge-failed' : 'badge-pending';
-        const inviteStatus = `<span class="badge ${sendClass}" title="${esc(g.sendError||'')}">${sendLabel}</span>`;
-        const rsvp = rsvpMap[g.name.toLowerCase()];
-        const rsvpBadge = rsvp
-          ? (rsvp.attending === 'yes'
-              ? `<span class="badge badge-yes">✓ Yes</span>`
-              : `<span class="badge badge-no">✗ No</span>`)
+      var tbody = document.getElementById('dashboardBody');
+      if (!tbody) return;
+      var seg = _currentSegment;
+      var validGuests = state.guests.filter(function(g){return g.valid;});
+      var rows = [];
+      if (seg === 'attending') {
+        rows = ((_dashRsvpData && _dashRsvpData.rsvps) || []).filter(function(r){return r.attending==='yes';}).map(function(r){return {name:r.guest_name,rsvp:r};});
+      } else if (seg === 'declined') {
+        rows = ((_dashRsvpData && _dashRsvpData.rsvps) || []).filter(function(r){return r.attending==='no';}).map(function(r){return {name:r.guest_name,rsvp:r};});
+      } else if (seg === 'pending') {
+        rows = validGuests.filter(function(g){return !g.rsvpReceived;}).map(function(g){return {name:g.name,rsvp:null};});
+      } else {
+        var seen = {};
+        validGuests.forEach(function(g){seen[g.name.toLowerCase()]=true; rows.push({name:g.name,rsvp:rsvpMap[g.name.toLowerCase()]||null});});
+        ((_dashRsvpData&&_dashRsvpData.rsvps)||[]).forEach(function(r){if(!seen[r.guest_name.toLowerCase()])rows.push({name:r.guest_name,rsvp:r});});
+      }
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--grey);">No guests to show for this filter.</td></tr>';
+        return;
+      }
+      var html = rows.map(function(row) {
+        var rsvp = row.rsvp;
+        var rsvpBadge = rsvp
+          ? (rsvp.attending === 'yes' ? '<span class="badge badge-yes">&#x2713; Yes</span>' : '<span class="badge badge-no">&#x2717; No</span>')
           : '<span class="badge badge-waiting">Pending</span>';
-        const attending = rsvp && rsvp.attending === 'yes' ? rsvp.guests_count || 1 : '—';
-        return `
-        <tr>
-          <td><strong>${esc(g.name)}</strong></td>
-          <td style="font-family:monospace;font-size:12px;color:var(--grey)">${esc(g.number)}</td>
-          <td>${inviteStatus}</td>
-          <td>${rsvpBadge}</td>
-          <td>${attending}</td>
-          <td>${esc(rsvp && rsvp.dietary ? rsvp.dietary : '—')}</td>
-        </tr>`;
+        var seats = rsvp && rsvp.attending === 'yes' ? (rsvp.guests_count || 1) : '&#x2014;';
+        var dietary = rsvp && rsvp.dietary ? esc(rsvp.dietary) : '&#x2014;';
+        var attendType = rsvp && rsvp.attendance_type ? '<span class="badge badge-attend">' + esc(rsvp.attendance_type) + '</span>' : '&#x2014;';
+        var ts = rsvp && rsvp.timestamp ? new Date(rsvp.timestamp).toLocaleDateString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '&#x2014;';
+        return '<tr><td><strong>' + esc(row.name) + '</strong></td><td>' + rsvpBadge + '</td><td>' + seats + '</td><td style="font-size:13px;color:var(--grey)">' + dietary + '</td><td>' + attendType + '</td><td style="font-size:12px;color:var(--grey)">' + ts + '</td></tr>';
       }).join('');
+      tbody.innerHTML = html;
+    }
+
+    function setSegment(seg) {
+      _currentSegment = seg;
+      document.querySelectorAll('.seg-btn').forEach(function(b){b.classList.remove('active');});
+      var btn = document.getElementById('seg-' + seg);
+      if (btn) btn.classList.add('active');
+      var rsvpMap = {};
+      ((_dashRsvpData&&_dashRsvpData.rsvps)||[]).forEach(function(r){rsvpMap[r.guest_name.toLowerCase()]=r;});
+      renderDashboardTable(rsvpMap);
+    }
+
+    function switchDashTab(tab) {
+      _currentDashTab = tab;
+      document.querySelectorAll('.dash-tab').forEach(function(b){b.classList.remove('active');});
+      var btn = document.getElementById('dtab-' + tab);
+      if (btn) btn.classList.add('active');
+      ['rsvps','send','hotels'].forEach(function(t){
+        var panel = document.getElementById('dpanel-' + t);
+        if (panel) panel.style.display = t === tab ? 'block' : 'none';
+      });
+      if (tab === 'send') renderSendList();
+      if (tab === 'hotels') renderHotels();
+    }
+
+    function renderDietaryBreakdown(breakdown) {
+      var section = document.getElementById('dietaryBreakdown');
+      var chips = document.getElementById('dietaryChips');
+      if (!section || !chips) return;
+      var entries = Object.entries(breakdown).filter(function(e){return e[0]&&e[1];});
+      if (!entries.length) { section.style.display = 'none'; return; }
+      chips.innerHTML = entries.map(function(e){
+        return '<div class="dietary-chip">' + esc(e[0]) + '<span class="dc-count">' + e[1] + '</span></div>';
+      }).join('');
+      section.style.display = 'block';
+    }
+
+    function renderSendList() {
+      var container = document.getElementById('sendListContent');
+      if (!container) return;
+      var validGuests = state.guests.filter(function(g){return g.valid;});
+      var rsvpdSet = {};
+      ((_dashRsvpData&&_dashRsvpData.rsvps)||[]).forEach(function(r){rsvpdSet[r.guest_name.toLowerCase()]=true;});
+      var pending = validGuests.filter(function(g){return !g.invited_at && !rsvpdSet[g.name.toLowerCase()];});
+      var done = validGuests.filter(function(g){return g.invited_at || rsvpdSet[g.name.toLowerCase()];});
+      var html = '';
+      if (pending.length) {
+        html += '<div class="send-section-header pending">&#128228; ' + pending.length + ' to invite</div>';
+        pending.forEach(function(g){html += buildSendRow(g,false,rsvpdSet);});
+      }
+      if (done.length) {
+        html += '<div class="send-section-header done" style="margin-top:' + (pending.length?'20px':'0') + '">' +
+          '&#10003; ' + done.length + ' already invited / RSVPd</div>';
+        done.forEach(function(g){html += buildSendRow(g,true,rsvpdSet);});
+      }
+      if (!pending.length && !done.length) {
+        html = '<div style="color:var(--grey);font-size:14px;padding:24px 0;">No guests in your invite list. Add guests in Step 4 to use the send list.</div>';
+      }
+      container.innerHTML = html;
+    }
+
+    function buildSendRow(g, isDone, rsvpdSet) {
+      var inviteUrl = state.inviteUrl || localStorage.getItem('if_invite_url') || '';
+      var eventName = state.eventName || localStorage.getItem('if_event_name') || 'the event';
+      var msg = 'Hi ' + g.name + '! You\'re invited to ' + eventName + '.\n\nView your invitation:\n' + inviteUrl;
+      var waLink = 'https://wa.me/' + (g.number||'').replace(/\D/g,'') + '?text=' + encodeURIComponent(msg);
+      var smsLink = 'sms:' + (g.number||'') + '?body=' + encodeURIComponent(msg);
+      var isRsvpd = rsvpdSet && rsvpdSet[g.name.toLowerCase()];
+      var statusTag = isRsvpd
+        ? '<span class="rsvpd-tag">RSVPd</span>'
+        : g.invited_at ? '<span class="invited-tag">Invited</span>' : '';
+      var safeName = esc(g.name).replace(/'/g, "\\'");
+      return '<div class="guest-send-row' + (isDone?' done-row':'') + '">' +
+        '<div class="guest-send-info"><div class="gname">' + esc(g.name) + ' ' + statusTag + '</div>' +
+        (g.number ? '<div class="gnum">' + esc(g.number) + '</div>' : '') + '</div>' +
+        '<div class="send-btns">' +
+        '<a href="' + waLink + '" target="_blank" rel="noopener" onclick="markGuestInvited(\'' + safeName + '\',\'whatsapp\')" class="phone-send-btn wa-btn">WA</a>' +
+        '<a href="' + smsLink + '" onclick="markGuestInvited(\'' + safeName + '\',\'sms\')" class="phone-send-btn sms-btn">SMS</a>' +
+        '</div></div>';
+    }
+
+    async function markGuestInvited(guestName, via) {
+      var token = state.authToken || localStorage.getItem('if_auth_token') || '';
+      var jwt = localStorage.getItem('if_jwt') || '';
+      var headers = {'Content-Type':'application/json'};
+      if (jwt) headers['Authorization'] = 'Bearer ' + jwt;
+      try {
+        await fetch('/api/event/' + state.eventId + '/mark-invited', {
+          method:'POST', headers:headers,
+          body:JSON.stringify({auth_token:token, guest_name:guestName, invited_via:via})
+        });
+        var g = state.guests.find(function(g){return g.name.toLowerCase()===guestName.toLowerCase();});
+        if (g) g.invited_at = new Date().toISOString();
+        setTimeout(renderSendList, 400);
+      } catch(e) {}
+    }
+
+    function renderHotels() {
+      var container = document.getElementById('hotelsContent');
+      if (!container) return;
+      var hotelList = (_dashRsvpData && _dashRsvpData.hotel_list) || [];
+      var guests = state.guests.filter(function(g){return g.valid;});
+      if (!hotelList.length) {
+        container.innerHTML = '<div style="color:var(--grey);font-size:14px;padding:24px 0;">No hotels configured. Add hotel names to your event to assign guests to hotels.</div>';
+        return;
+      }
+      var token = state.authToken || localStorage.getItem('if_auth_token') || '';
+      var safeToken = esc(token).replace(/'/g,"\\'");
+      var rows = guests.map(function(g) {
+        var opts = ['— No hotel —'].concat(hotelList).map(function(h) {
+          return '<option value="' + esc(h) + '"' + ((g.hotel||'')===(h)?'selected':'') + '>' + esc(h) + '</option>';
+        }).join('');
+        var safeName = esc(g.name).replace(/'/g,"\\'");
+        return '<div class="hotel-row"><div><strong>' + esc(g.name) + '</strong></div>' +
+          '<select class="hotel-select" onchange="assignHotel(\'' + safeName + '\',this.value,\'' + safeToken + '\')">' + opts + '</select></div>';
+      }).join('');
+      container.innerHTML = rows + '<div style="margin-top:16px;"><button onclick="exportHotelsCSV()" style="padding:10px 20px;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--white);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">&#128229; Export Hotels CSV</button></div>';
+    }
+
+    async function assignHotel(guestName, hotel, token) {
+      var jwt = localStorage.getItem('if_jwt') || '';
+      var headers = {'Content-Type':'application/json'};
+      if (jwt) headers['Authorization'] = 'Bearer ' + jwt;
+      try {
+        await fetch('/api/event/' + state.eventId + '/hotel-assign', {
+          method:'POST', headers:headers,
+          body:JSON.stringify({auth_token:token, guest_name:guestName, hotel: hotel==='— No hotel —'?'':hotel})
+        });
+        var g = state.guests.find(function(g){return g.name.toLowerCase()===guestName.toLowerCase();});
+        if (g) g.hotel = hotel==='— No hotel —'?'':hotel;
+      } catch(e) {}
+    }
+
+    function exportHotelsCSV() {
+      var rows = [['Name','Number','Hotel']];
+      state.guests.filter(function(g){return g.valid;}).forEach(function(g){
+        rows.push([g.name, g.number, g.hotel||'—']);
+      });
+      var csv = rows.map(function(r){return r.map(function(c){return '"'+c+'"';}).join(',');}).join('\n');
+      var a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+      a.download = 'hotels.csv';
+      a.click();
+    }
+
+    function openBulkReminder() {
+      var nonResponders = state.guests.filter(function(g){return g.valid && !g.rsvpReceived;});
+      if (!nonResponders.length) { alert('Everyone has responded — no reminders needed!'); return; }
+      openPhoneSendModal('phone_whatsapp', nonResponders);
     }
 
     function sendReminders(type) {
-      const nonResponders = state.guests.filter(g => g.valid && !g.rsvpReceived);
+      var nonResponders = state.guests.filter(function(g){return g.valid && !g.rsvpReceived;});
       if (!nonResponders.length) { alert('Everyone has responded — no reminders needed!'); return; }
       openPhoneSendModal(type, nonResponders);
     }
@@ -1723,18 +2046,22 @@
     }
 
     function exportCSV() {
-      const rows = [['Name','Number','Invite Sent','RSVP','Attending','Dietary']];
-      state.guests.filter(g=>g.valid).forEach(g => {
+      var rows = [['Name','Number','Invited At','RSVP','Attending','Seats','Attendance Type','Dietary','Hotel','RSVP Time']];
+      state.guests.filter(function(g){return g.valid;}).forEach(function(g) {
         rows.push([
           g.name, g.number,
-          g.sendStatus === 'sent' ? 'Yes' : (g.sendStatus === 'failed' ? 'Failed' : 'Pending'),
+          g.invited_at ? new Date(g.invited_at).toLocaleString('en-GB') : '—',
           g.rsvp ? (g.rsvp.attending === 'yes' ? 'Attending' : 'Declined') : 'Pending',
-          g.rsvp && g.rsvp.attending === 'yes' ? g.rsvp.guests_count : '—',
-          g.rsvp ? g.rsvp.dietary || '—' : '—',
+          g.rsvp && g.rsvp.attending === 'yes' ? (g.rsvp.guests_count || 1) : '—',
+          g.rsvp && g.rsvp.attending === 'yes' ? (g.rsvp.guests_count || 1) : '0',
+          g.rsvp && g.rsvp.attendance_type ? g.rsvp.attendance_type : '—',
+          g.rsvp ? (g.rsvp.dietary || '—') : '—',
+          g.hotel || '—',
+          g.rsvp && g.rsvp.timestamp ? new Date(g.rsvp.timestamp).toLocaleString('en-GB') : '—',
         ]);
       });
-      const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
-      const a = document.createElement('a');
+      var csv = rows.map(function(r){return r.map(function(c){return '"'+(String(c).replace(/"/g,'""'))+'"';}).join(',');}).join('\n');
+      var a = document.createElement('a');
       a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
       a.download = 'invite-tracker.csv';
       a.click();
@@ -1821,7 +2148,7 @@
       state.eventId = ''; state.inviteUrl = ''; state.authToken = '';
       state.guests = []; state.sentCount = null; state.failedCount = null;
       // Clear form fields
-      ['eventName','eventDate','eventTime','eventVenue','rsvpDeadline','senderName','messageText','guestPaste','testNumber'].forEach(id => {
+      ['eventName','eventDate','eventTime','eventVenue','rsvpDeadline','senderName','messageText','guestPaste','testNumber','dressCode','hashtagInput','attendanceTypes','timelineInput','hotelListInput'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
       document.getElementById('guestResults').style.display = 'none';
