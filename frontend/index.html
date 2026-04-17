@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>InviteForge — Personalised Invitations, Sent in Minutes</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
       --gold: #c9a96e;
       --gold-light: #e8d5a3;
+      --gold-dim: rgba(201,169,110,0.12);
       --navy: #0a0e1a;
       --navy-mid: #111827;
       --navy-light: #1e2d45;
@@ -29,175 +30,329 @@
       overflow-x: hidden;
     }
 
-    /* NAV */
+    /* ─── ANIMATIONS ──────────────────────────────── */
+    @keyframes orb1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      40%  { transform: translate(60px, -40px) scale(1.12); }
+      70%  { transform: translate(-30px, 30px) scale(0.92); }
+    }
+    @keyframes orb2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      35%  { transform: translate(-70px, 30px) scale(0.9); }
+      65%  { transform: translate(40px, -25px) scale(1.08); }
+    }
+    @keyframes orb3 {
+      0%, 100% { transform: translate(0, 0); }
+      50%  { transform: translate(30px, 50px); }
+    }
+    @keyframes shimmer {
+      0%   { background-position: -400% center; }
+      100% { background-position: 400% center; }
+    }
+    @keyframes pulseRing {
+      0%   { transform: scale(1); opacity: 0.7; }
+      100% { transform: scale(2); opacity: 0; }
+    }
+    @keyframes floatUp {
+      0%, 100% { transform: translateY(0); }
+      50%  { transform: translateY(-10px); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes scanline {
+      0%   { top: -100%; }
+      100% { top: 200%; }
+    }
+
+    .reveal {
+      opacity: 0; transform: translateY(32px);
+      transition: opacity 0.75s ease, transform 0.75s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-d1 { transition-delay: 0.1s; }
+    .reveal-d2 { transition-delay: 0.2s; }
+    .reveal-d3 { transition-delay: 0.3s; }
+    .reveal-d4 { transition-delay: 0.4s; }
+    .reveal-d5 { transition-delay: 0.5s; }
+
+    /* ─── NAV ─────────────────────────────────────── */
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
-      padding: 20px 60px;
-      background: rgba(10,14,26,0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(201,169,110,0.15);
+      padding: 18px 60px;
+      background: rgba(10,14,26,0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(201,169,110,0.12);
+      transition: background 0.3s;
     }
     .nav-logo {
       font-family: 'Playfair Display', serif;
       font-size: 24px; font-weight: 700;
-      color: var(--gold); letter-spacing: 1px;
+      color: var(--gold); letter-spacing: 0.5px;
     }
     .nav-logo span { color: var(--white); }
     .nav-links { display: flex; gap: 36px; list-style: none; }
-    .nav-links a { color: var(--grey); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }
-    .nav-links a:hover { color: var(--gold); }
+    .nav-links a {
+      color: var(--grey); text-decoration: none;
+      font-size: 14px; font-weight: 500;
+      transition: color 0.2s; letter-spacing: 0.2px;
+    }
+    .nav-links a:hover { color: var(--white); }
     .nav-cta {
       background: var(--gold); color: var(--navy);
-      padding: 10px 28px; border-radius: 6px;
-      font-size: 14px; font-weight: 600; text-decoration: none;
-      transition: background 0.2s, transform 0.2s;
+      padding: 10px 26px; border-radius: 8px;
+      font-size: 14px; font-weight: 700; text-decoration: none;
+      transition: all 0.25s; position: relative; overflow: hidden;
+      letter-spacing: 0.2px;
     }
-    .nav-cta:hover { background: var(--gold-light); transform: translateY(-1px); }
+    .nav-cta::after {
+      content: ''; position: absolute;
+      top: 0; left: -100%; width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+      transition: left 0.45s ease;
+    }
+    .nav-cta:hover::after { left: 110%; }
+    .nav-cta:hover { background: var(--gold-light); transform: translateY(-2px); box-shadow: 0 8px 28px rgba(201,169,110,0.35); }
 
-    /* HERO */
+    /* ─── HERO ────────────────────────────────────── */
     .hero {
       min-height: 100vh;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       text-align: center;
-      padding: 120px 40px 80px;
+      padding: 140px 40px 100px;
       position: relative; overflow: hidden;
     }
-    .hero-bg {
+    .hero-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+    .hero-orb {
+      position: absolute; border-radius: 50%;
+      filter: blur(100px); will-change: transform;
+    }
+    .hero-orb-1 {
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, rgba(201,169,110,0.18) 0%, transparent 70%);
+      top: -200px; left: 50%; transform: translateX(-50%);
+      animation: orb1 14s ease-in-out infinite;
+    }
+    .hero-orb-2 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(30,45,69,0.8) 0%, rgba(201,169,110,0.05) 70%);
+      bottom: -100px; right: -150px;
+      animation: orb2 18s ease-in-out infinite;
+    }
+    .hero-orb-3 {
+      width: 350px; height: 350px;
+      background: radial-gradient(circle, rgba(201,169,110,0.08) 0%, transparent 70%);
+      top: 40%; left: -100px;
+      animation: orb3 20s ease-in-out infinite;
+    }
+    .hero-grid {
       position: absolute; inset: 0;
-      background: radial-gradient(ellipse at 50% 40%, rgba(201,169,110,0.08) 0%, transparent 70%);
+      background-image:
+        linear-gradient(rgba(201,169,110,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(201,169,110,0.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 0%, transparent 100%);
     }
+    .hero-content { position: relative; z-index: 1; }
     .hero-tag {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: rgba(201,169,110,0.1);
-      border: 1px solid rgba(201,169,110,0.3);
+      display: inline-flex; align-items: center; gap: 10px;
+      background: rgba(201,169,110,0.08);
+      border: 1px solid rgba(201,169,110,0.25);
       color: var(--gold); font-size: 13px; font-weight: 500;
-      padding: 8px 18px; border-radius: 100px;
-      margin-bottom: 32px; letter-spacing: 0.5px;
+      padding: 9px 20px; border-radius: 100px;
+      margin-bottom: 36px; letter-spacing: 0.3px;
+      animation: fadeUp 0.8s ease both;
     }
-    .hero-tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+    .live-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green); position: relative; flex-shrink: 0;
+    }
+    .live-dot::after {
+      content: ''; position: absolute; inset: -3px;
+      border-radius: 50%; background: var(--green); opacity: 0.4;
+      animation: pulseRing 1.8s ease-out infinite;
+    }
     .hero h1 {
       font-family: 'Playfair Display', serif;
-      font-size: clamp(42px, 7vw, 88px);
-      font-weight: 900; line-height: 1.05;
-      letter-spacing: -1px;
-      margin-bottom: 24px;
+      font-size: clamp(44px, 7.5vw, 92px);
+      font-weight: 900; line-height: 1.04;
+      letter-spacing: -2px;
+      margin-bottom: 28px;
+      animation: fadeUp 0.8s ease 0.1s both;
     }
-    .hero h1 .accent { color: var(--gold); }
+    .hero h1 .accent {
+      background: linear-gradient(135deg, #c9a96e 0%, #f0d898 40%, #c9a96e 60%, #a87c3f 100%);
+      background-size: 300% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 5s linear infinite;
+    }
     .hero p {
-      font-size: clamp(17px, 2.5vw, 21px);
-      color: var(--grey); max-width: 600px;
-      line-height: 1.7; margin-bottom: 48px;
+      font-size: clamp(17px, 2.2vw, 21px);
+      color: var(--grey); max-width: 580px;
+      line-height: 1.75; margin-bottom: 52px;
+      animation: fadeUp 0.8s ease 0.2s both;
     }
-    .hero-btns { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+    .hero-btns {
+      display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+      animation: fadeUp 0.8s ease 0.3s both;
+    }
     .btn-primary {
       background: var(--gold); color: var(--navy);
-      padding: 16px 40px; border-radius: 8px;
+      padding: 18px 44px; border-radius: 10px;
       font-size: 16px; font-weight: 700; text-decoration: none;
-      transition: all 0.2s; display: inline-flex; align-items: center; gap: 10px;
+      transition: all 0.25s cubic-bezier(0.175,0.885,0.32,1.275);
+      display: inline-flex; align-items: center; gap: 10px;
+      position: relative; overflow: hidden; letter-spacing: 0.2px;
     }
-    .btn-primary:hover { background: var(--gold-light); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(201,169,110,0.3); }
+    .btn-primary::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.18));
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .btn-primary:hover { background: var(--gold-light); transform: translateY(-3px); box-shadow: 0 12px 36px rgba(201,169,110,0.4); }
+    .btn-primary:hover::after { opacity: 1; }
     .btn-secondary {
       background: transparent; color: var(--white);
-      padding: 16px 40px; border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.2);
+      padding: 18px 44px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.18);
       font-size: 16px; font-weight: 600; text-decoration: none;
-      transition: all 0.2s;
+      transition: all 0.25s; letter-spacing: 0.2px;
     }
-    .btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-secondary:hover { border-color: var(--gold); color: var(--gold); transform: translateY(-2px); }
     .hero-stats {
-      display: flex; gap: 48px; margin-top: 72px;
+      display: flex; gap: 56px; margin-top: 80px;
       flex-wrap: wrap; justify-content: center;
+      animation: fadeUp 0.8s ease 0.4s both;
     }
     .stat { text-align: center; }
-    .stat-num { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; color: var(--gold); }
-    .stat-label { font-size: 13px; color: var(--grey); margin-top: 4px; }
+    .stat-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 38px; font-weight: 700; color: var(--gold);
+    }
+    .stat-label { font-size: 13px; color: var(--grey); margin-top: 6px; letter-spacing: 0.3px; }
 
-    /* PROOF BANNER */
+    /* ─── PROOF BANNER ────────────────────────────── */
     .proof-banner {
-      background: rgba(201,169,110,0.06);
+      background: linear-gradient(90deg, rgba(201,169,110,0.04), rgba(201,169,110,0.08), rgba(201,169,110,0.04));
       border-top: 1px solid rgba(201,169,110,0.15);
       border-bottom: 1px solid rgba(201,169,110,0.15);
-      padding: 20px 40px;
+      padding: 18px 40px;
       text-align: center;
     }
-    .proof-banner p { font-size: 14px; color: var(--grey); }
+    .proof-banner p { font-size: 14px; color: var(--grey); line-height: 1.6; }
     .proof-banner span { color: var(--gold); font-weight: 600; }
 
-    /* HOW IT WORKS */
-    section { padding: 100px 60px; }
+    /* ─── SECTIONS ────────────────────────────────── */
+    section { padding: 108px 80px; }
     .section-label {
-      font-size: 12px; font-weight: 600; letter-spacing: 3px;
+      font-size: 11px; font-weight: 700; letter-spacing: 4px;
       text-transform: uppercase; color: var(--gold);
-      margin-bottom: 16px;
+      margin-bottom: 18px; display: flex; align-items: center; gap: 12px;
+    }
+    .section-label::before {
+      content: ''; width: 24px; height: 1px; background: var(--gold); flex-shrink: 0;
     }
     .section-title {
       font-family: 'Playfair Display', serif;
-      font-size: clamp(32px, 5vw, 52px);
-      font-weight: 700; line-height: 1.15;
-      margin-bottom: 20px;
+      font-size: clamp(34px, 4.5vw, 56px);
+      font-weight: 700; line-height: 1.12;
+      margin-bottom: 22px;
     }
-    .section-sub { font-size: 18px; color: var(--grey); max-width: 560px; line-height: 1.7; }
+    .section-sub { font-size: 18px; color: var(--grey); max-width: 540px; line-height: 1.75; }
 
+    /* ─── HOW IT WORKS ────────────────────────────── */
     .steps {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 24px; margin-top: 64px;
+      gap: 20px; margin-top: 64px;
     }
     .step {
       background: var(--navy-mid);
       border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 16px; padding: 36px 32px;
-      position: relative; transition: border-color 0.3s, transform 0.3s;
+      border-radius: 22px; padding: 40px 34px;
+      position: relative; transition: all 0.4s ease;
+      overflow: hidden;
     }
-    .step:hover { border-color: rgba(201,169,110,0.3); transform: translateY(-4px); }
+    .step-top-glow {
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      opacity: 0; transition: opacity 0.35s;
+    }
+    .step:hover .step-top-glow { opacity: 1; }
+    .step:hover {
+      border-color: rgba(201,169,110,0.2);
+      transform: translateY(-7px);
+      box-shadow: 0 20px 48px rgba(0,0,0,0.35), 0 0 0 1px rgba(201,169,110,0.08);
+    }
     .step-num {
       font-family: 'Playfair Display', serif;
-      font-size: 52px; font-weight: 900;
-      color: rgba(201,169,110,0.15); line-height: 1;
+      font-size: 54px; font-weight: 900;
+      color: rgba(201,169,110,0.1); line-height: 1;
       margin-bottom: 20px;
     }
     .step-icon { font-size: 32px; margin-bottom: 16px; }
     .step h3 { font-size: 20px; font-weight: 600; margin-bottom: 12px; }
-    .step p { font-size: 15px; color: var(--grey); line-height: 1.7; }
+    .step p { font-size: 15px; color: var(--grey); line-height: 1.75; }
 
-    /* TEMPLATES */
-    .templates-section { background: var(--navy-mid); }
+    /* ─── TEMPLATES ───────────────────────────────── */
+    .templates-section {
+      background: var(--navy-mid);
+      border-top: 1px solid rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
     .templates-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 20px; margin-top: 56px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px; margin-top: 60px;
     }
     .template-card {
-      border-radius: 12px; overflow: hidden;
-      border: 2px solid transparent; cursor: pointer;
-      transition: all 0.3s; position: relative;
+      border-radius: 18px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.07); cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+      position: relative;
     }
-    .template-card:hover { border-color: var(--gold); transform: scale(1.02); }
+    .template-card::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(to bottom, transparent 50%, rgba(201,169,110,0.12));
+      opacity: 0; transition: opacity 0.3s; z-index: 1;
+    }
+    .template-card:hover {
+      border-color: var(--gold);
+      transform: translateY(-10px) scale(1.015);
+      box-shadow: 0 24px 60px rgba(201,169,110,0.18), 0 0 0 1px rgba(201,169,110,0.3);
+    }
+    .template-card:hover::before { opacity: 1; }
     .template-preview {
-      height: 260px; display: flex; flex-direction: column;
+      height: 280px; display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      padding: 24px; text-align: center;
+      padding: 28px; text-align: center;
     }
     .template-luxury { background: linear-gradient(160deg, #0a0e1a 0%, #1e2d45 100%); }
-    .template-garden { background: linear-gradient(160deg, #f0fdf4 0%, #dcfce7 100%); }
+    .template-garden { background: linear-gradient(160deg, #ecfdf5 0%, #d1fae5 100%); }
     .template-minimal { background: linear-gradient(160deg, #ffffff 0%, #f1f5f9 100%); }
     .template-celebration { background: linear-gradient(160deg, #1e1b4b 0%, #312e81 100%); }
     .template-corporate { background: linear-gradient(160deg, #0f172a 0%, #1e293b 100%); }
     .template-label {
       position: absolute; bottom: 0; left: 0; right: 0;
-      padding: 12px 16px;
-      background: rgba(10,14,26,0.85);
+      padding: 14px 18px; z-index: 2;
+      background: rgba(10,14,26,0.88);
+      backdrop-filter: blur(8px);
       font-size: 14px; font-weight: 600; color: var(--white);
       text-align: center;
     }
     .template-badge {
       background: var(--gold); color: var(--navy);
       font-size: 10px; font-weight: 700; letter-spacing: 1px;
-      text-transform: uppercase; padding: 3px 10px; border-radius: 100px;
-      margin-bottom: 12px;
+      text-transform: uppercase; padding: 4px 12px; border-radius: 100px;
+      margin-bottom: 14px;
     }
+    .tmpl-subtitle { font-size: 11px; opacity: 0.6; margin-top: 6px; }
 
-    /* FEATURES */
+    /* ─── FEATURES ────────────────────────────────── */
     .features-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 20px; margin-top: 64px;
@@ -205,20 +360,126 @@
     .feature {
       background: var(--navy-mid);
       border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 16px; padding: 32px;
-      transition: border-color 0.3s;
+      border-radius: 20px; padding: 36px;
+      transition: all 0.3s ease;
+      position: relative; overflow: hidden;
     }
-    .feature:hover { border-color: rgba(201,169,110,0.25); }
+    .feature::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+      height: 120px;
+      background: linear-gradient(to top, rgba(201,169,110,0.04), transparent);
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .feature:hover { border-color: rgba(201,169,110,0.28); transform: translateY(-5px); box-shadow: 0 16px 44px rgba(0,0,0,0.25); }
+    .feature:hover::after { opacity: 1; }
     .feature-icon {
-      width: 52px; height: 52px; border-radius: 12px;
-      background: rgba(201,169,110,0.1);
+      width: 56px; height: 56px; border-radius: 16px;
+      background: rgba(201,169,110,0.08);
+      border: 1px solid rgba(201,169,110,0.15);
       display: flex; align-items: center; justify-content: center;
-      font-size: 24px; margin-bottom: 20px;
+      font-size: 26px; margin-bottom: 22px;
+      transition: all 0.3s; position: relative; z-index: 1;
     }
-    .feature h3 { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
-    .feature p { font-size: 14px; color: var(--grey); line-height: 1.7; }
+    .feature:hover .feature-icon { background: rgba(201,169,110,0.16); transform: scale(1.1) rotate(-4deg); }
+    .feature h3 { font-size: 18px; font-weight: 600; margin-bottom: 12px; position: relative; z-index: 1; }
+    .feature p { font-size: 14px; color: var(--grey); line-height: 1.75; position: relative; z-index: 1; }
+    .feature.featured-green {
+      border-color: rgba(34,197,94,0.2);
+      background: linear-gradient(160deg, rgba(34,197,94,0.03) 0%, var(--navy-mid) 100%);
+    }
+    .feature.featured-green:hover { border-color: rgba(34,197,94,0.4); }
 
-    /* PRICING */
+    /* ─── TESTIMONIALS ────────────────────────────── */
+    .testimonials-section { background: var(--navy-mid); }
+    .testimonials-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px; margin-top: 60px;
+    }
+    .testimonial-card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 20px; padding: 36px;
+      position: relative; transition: all 0.3s ease;
+    }
+    .testimonial-card:hover {
+      border-color: rgba(201,169,110,0.2);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+    }
+    .testimonial-stars { color: var(--gold); font-size: 16px; margin-bottom: 20px; letter-spacing: 2px; }
+    .testimonial-quote {
+      font-family: 'Playfair Display', serif;
+      font-size: 17px; line-height: 1.7;
+      color: var(--white); margin-bottom: 24px;
+      font-style: italic;
+    }
+    .testimonial-author { display: flex; align-items: center; gap: 14px; }
+    .testimonial-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700; flex-shrink: 0;
+      background: rgba(201,169,110,0.12); border: 1px solid rgba(201,169,110,0.2);
+      color: var(--gold); font-family: 'Playfair Display', serif;
+    }
+    .testimonial-name { font-size: 14px; font-weight: 600; }
+    .testimonial-event { font-size: 12px; color: var(--grey); margin-top: 2px; }
+    .testimonial-quote-mark {
+      position: absolute; top: 24px; right: 28px;
+      font-family: 'Playfair Display', serif;
+      font-size: 80px; line-height: 1; color: rgba(201,169,110,0.08);
+      pointer-events: none;
+    }
+
+    /* ─── PROOF ───────────────────────────────────── */
+    .proof-section {
+      background: var(--navy);
+      border-top: 1px solid rgba(201,169,110,0.08);
+      border-bottom: 1px solid rgba(201,169,110,0.08);
+    }
+    .proof-inner {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 80px; align-items: center;
+    }
+    .proof-stats { display: flex; flex-direction: column; gap: 16px; margin-top: 44px; }
+    .proof-stat {
+      display: flex; align-items: center; gap: 22px;
+      padding: 20px 24px; border-radius: 14px;
+      background: rgba(201,169,110,0.05);
+      border: 1px solid rgba(201,169,110,0.12);
+      transition: all 0.3s;
+    }
+    .proof-stat:hover { background: rgba(201,169,110,0.08); border-color: rgba(201,169,110,0.25); transform: translateX(6px); }
+    .proof-stat-icon { font-size: 28px; flex-shrink: 0; }
+    .proof-stat-num { font-family: 'Playfair Display', serif; font-size: 34px; font-weight: 700; color: var(--gold); line-height: 1; }
+    .proof-stat-label { font-size: 13px; color: var(--grey); margin-top: 4px; }
+    .proof-sms-card {
+      background: linear-gradient(160deg, #0e1420 0%, #1a2540 100%);
+      border: 1px solid rgba(201,169,110,0.18);
+      border-radius: 24px; padding: 48px 42px; text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .proof-sms-card::before {
+      content: ''; position: absolute;
+      top: -50%; left: -50%; width: 200%; height: 200%;
+      background: radial-gradient(circle at 50% 50%, rgba(201,169,110,0.04) 0%, transparent 60%);
+      animation: orb1 16s ease-in-out infinite;
+    }
+    .proof-sms-label { font-size: 11px; color: var(--gold); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 24px; font-weight: 700; }
+    .sms-bubble {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(201,169,110,0.12);
+      border-radius: 18px 18px 18px 4px; padding: 24px 26px;
+      text-align: left; font-size: 14px; line-height: 1.85;
+      color: #e8d5a3; margin-bottom: 24px;
+      position: relative; z-index: 1;
+    }
+    .sms-name { color: var(--gold); font-weight: 700; }
+    .sms-link { color: #60a5fa; text-decoration: underline; font-size: 13px; }
+    .proof-ticks { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
+    .proof-tick { font-size: 13px; color: var(--grey); display: flex; align-items: center; gap: 10px; }
+    .proof-tick::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
+
+    /* ─── PRICING ─────────────────────────────────── */
     .pricing-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 24px; margin-top: 64px; align-items: start;
@@ -226,108 +487,104 @@
     .price-card {
       background: var(--navy-mid);
       border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 20px; padding: 40px 36px;
-      transition: all 0.3s;
+      border-radius: 24px; padding: 44px 38px;
+      transition: all 0.35s ease;
     }
-    .price-card:hover { transform: translateY(-4px); }
+    .price-card:hover { transform: translateY(-6px); box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
     .price-card.featured {
-      border-color: var(--gold);
-      background: linear-gradient(160deg, rgba(201,169,110,0.08) 0%, var(--navy-mid) 100%);
+      border-color: rgba(201,169,110,0.4);
+      background: linear-gradient(160deg, rgba(201,169,110,0.07) 0%, var(--navy-mid) 100%);
       position: relative;
+      box-shadow: 0 0 0 1px rgba(201,169,110,0.15), 0 0 60px rgba(201,169,110,0.08);
     }
-    .price-card.featured::before {
-      content: 'MOST POPULAR';
+    .price-card.featured:hover { box-shadow: 0 24px 60px rgba(201,169,110,0.2), 0 0 0 1px rgba(201,169,110,0.3); }
+    .featured-badge {
       position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
       background: var(--gold); color: var(--navy);
       font-size: 11px; font-weight: 700; letter-spacing: 2px;
-      padding: 4px 16px; border-radius: 100px;
+      padding: 5px 18px; border-radius: 100px; white-space: nowrap;
     }
-    .price-name { font-size: 14px; font-weight: 600; color: var(--gold); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px; }
-    .price-amount { font-family: 'Playfair Display', serif; font-size: 52px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
-    .price-amount span { font-size: 22px; font-weight: 400; color: var(--grey); }
-    .price-desc { font-size: 14px; color: var(--grey); margin-bottom: 32px; line-height: 1.6; }
+    .price-name { font-size: 13px; font-weight: 700; color: var(--gold); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 20px; }
+    .price-amount { font-family: 'Playfair Display', serif; font-size: 54px; font-weight: 700; line-height: 1; margin-bottom: 8px; }
+    .price-amount span { font-size: 20px; font-weight: 400; color: var(--grey); vertical-align: bottom; line-height: 2.2; }
+    .price-desc { font-size: 14px; color: var(--grey); margin-bottom: 32px; line-height: 1.7; }
     .price-features { list-style: none; margin-bottom: 36px; }
-    .price-features li { font-size: 14px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--grey); display: flex; align-items: center; gap: 10px; }
-    .price-features li::before { content: '✓'; color: var(--gold); font-weight: 700; flex-shrink: 0; }
+    .price-features li {
+      font-size: 14px; padding: 11px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: var(--grey); display: flex; align-items: flex-start; gap: 12px;
+    }
+    .price-features li::before { content: '✓'; color: var(--gold); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
     .price-btn {
       display: block; text-align: center; text-decoration: none;
-      padding: 14px; border-radius: 8px; font-size: 15px; font-weight: 600;
-      transition: all 0.2s;
+      padding: 15px; border-radius: 10px; font-size: 15px; font-weight: 700;
+      transition: all 0.25s; letter-spacing: 0.2px;
     }
     .price-btn-outline { border: 1px solid var(--gold); color: var(--gold); }
-    .price-btn-outline:hover { background: var(--gold); color: var(--navy); }
-    .price-btn-filled { background: var(--gold); color: var(--navy); }
-    .price-btn-filled:hover { background: var(--gold-light); }
+    .price-btn-outline:hover { background: var(--gold); color: var(--navy); transform: translateY(-2px); }
+    .price-btn-filled { background: var(--gold); color: var(--navy); box-shadow: 0 4px 20px rgba(201,169,110,0.2); }
+    .price-btn-filled:hover { background: var(--gold-light); transform: translateY(-2px); box-shadow: 0 10px 30px rgba(201,169,110,0.35); }
+    .price-card-green { border-color: rgba(34,197,94,0.25) !important; }
+    .price-card-green:hover { border-color: rgba(34,197,94,0.45) !important; }
+    .price-name-green { color: #22c55e !important; }
+    .price-btn-green { border: 1px solid #22c55e; color: #22c55e; }
+    .price-btn-green:hover { background: #22c55e; color: #0a0e1a; transform: translateY(-2px); }
 
-    /* PROOF / CASE STUDY */
-    .proof-section {
-      background: var(--navy-mid);
-      border-top: 1px solid rgba(201,169,110,0.1);
-      border-bottom: 1px solid rgba(201,169,110,0.1);
-    }
-    .proof-inner {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 80px; align-items: center;
-    }
-    .proof-stats { display: flex; flex-direction: column; gap: 24px; margin-top: 40px; }
-    .proof-stat {
-      display: flex; align-items: center; gap: 20px;
-      padding: 20px 24px; border-radius: 12px;
-      background: rgba(201,169,110,0.06);
-      border: 1px solid rgba(201,169,110,0.15);
-    }
-    .proof-stat-num { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; color: var(--gold); }
-    .proof-stat-label { font-size: 14px; color: var(--grey); }
-    .proof-invite-preview {
-      background: linear-gradient(160deg, #0a0e1a 0%, #1e2d45 100%);
-      border: 1px solid rgba(201,169,110,0.2);
-      border-radius: 20px; padding: 48px 40px; text-align: center;
-    }
-    .proof-invite-preview h2 {
-      font-family: 'Playfair Display', serif;
-      font-size: 28px; color: var(--gold); margin-bottom: 8px;
-    }
-    .proof-invite-preview p { font-size: 14px; color: var(--grey); line-height: 1.8; }
-    .proof-invite-preview .invite-details { margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(201,169,110,0.2); }
-    .proof-invite-preview .invite-detail { font-size: 13px; color: var(--grey); margin-bottom: 6px; }
-
-    /* CTA */
+    /* ─── CTA ─────────────────────────────────────── */
     .cta-section {
-      text-align: center; padding: 120px 60px;
-      background: linear-gradient(160deg, var(--navy) 0%, var(--navy-light) 100%);
+      text-align: center; padding: 130px 60px;
       position: relative; overflow: hidden;
     }
-    .cta-section::before {
-      content: '';
+    .cta-bg {
       position: absolute; inset: 0;
-      background: radial-gradient(ellipse at 50% 50%, rgba(201,169,110,0.1) 0%, transparent 65%);
+      background: radial-gradient(ellipse 80% 80% at 50% 50%, rgba(201,169,110,0.1) 0%, transparent 65%);
+    }
+    .cta-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(201,169,110,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(201,169,110,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 0%, transparent 100%);
     }
     .cta-section h2 {
       font-family: 'Playfair Display', serif;
-      font-size: clamp(36px, 5vw, 60px);
-      font-weight: 700; margin-bottom: 20px; position: relative;
+      font-size: clamp(38px, 5vw, 64px);
+      font-weight: 700; margin-bottom: 22px; position: relative;
     }
-    .cta-section p { font-size: 18px; color: var(--grey); margin-bottom: 48px; position: relative; }
+    .cta-section p { font-size: 19px; color: var(--grey); margin-bottom: 52px; position: relative; }
+    .cta-section .btn-primary { font-size: 18px; padding: 22px 56px; position: relative; }
+    .cta-note { font-size: 13px; color: rgba(156,163,175,0.6); margin-top: 20px; position: relative; }
 
-    /* FOOTER */
+    /* ─── FOOTER ──────────────────────────────────── */
     footer {
-      padding: 40px 60px;
+      padding: 40px 80px;
       border-top: 1px solid rgba(255,255,255,0.06);
       display: flex; align-items: center; justify-content: space-between;
       flex-wrap: wrap; gap: 16px;
     }
-    footer .logo { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--gold); }
+    footer .logo { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--gold); letter-spacing: 0.5px; }
+    footer .logo span { color: var(--white); }
     footer p { font-size: 13px; color: var(--grey); }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a { color: rgba(156,163,175,0.6); text-decoration: none; font-size: 13px; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--gold); }
 
-    /* MOBILE */
-    @media (max-width: 768px) {
+    /* ─── MOBILE ──────────────────────────────────── */
+    @media (max-width: 900px) {
       nav { padding: 16px 24px; }
       .nav-links { display: none; }
-      section { padding: 70px 24px; }
-      .proof-inner { grid-template-columns: 1fr; gap: 40px; }
-      footer { flex-direction: column; text-align: center; padding: 30px 24px; }
-      .hero-stats { gap: 24px; }
+      section { padding: 72px 28px; }
+      .proof-inner { grid-template-columns: 1fr; gap: 44px; }
+      footer { flex-direction: column; text-align: center; padding: 32px 28px; }
+      .hero-stats { gap: 28px; margin-top: 56px; }
       .nav-cta { padding: 9px 18px; font-size: 13px; }
+      .hero h1 { letter-spacing: -1px; }
+      .cta-section { padding: 80px 28px; }
+    }
+    @media (max-width: 640px) {
+      .hero-btns { flex-direction: column; align-items: center; }
+      .btn-primary, .btn-secondary { width: 100%; max-width: 320px; justify-content: center; }
     }
   </style>
 </head>
@@ -340,118 +597,152 @@
       <li><a href="#how-it-works">How It Works</a></li>
       <li><a href="#templates">Templates</a></li>
       <li><a href="#pricing">Pricing</a></li>
-      <li><a href="#proof">Case Study</a></li>
+      <li><a href="#proof">Live Proof</a></li>
     </ul>
     <a href="/app/" class="nav-cta">Create Your Invitation →</a>
   </nav>
 
   <!-- HERO -->
   <section class="hero">
-    <div class="hero-bg"></div>
-    <div class="hero-tag"><span class="dot"></span> Live & Proven — 76 invites sent in one session</div>
-    <h1>Beautiful Invitations.<br/><span class="accent">Sent in Minutes.</span></h1>
-    <p>Create a stunning personalised invitation page, upload your guest list, and blast personalised SMS invites to every guest — all tracked live.</p>
-    <div class="hero-btns">
-      <a href="/app/" class="btn-primary">Create Your Invitation →</a>
-      <a href="#proof" class="btn-secondary">See It In Action</a>
+    <div class="hero-bg">
+      <div class="hero-orb hero-orb-1"></div>
+      <div class="hero-orb hero-orb-2"></div>
+      <div class="hero-orb hero-orb-3"></div>
+      <div class="hero-grid"></div>
     </div>
-    <div class="hero-stats">
-      <div class="stat"><div class="stat-num">98%</div><div class="stat-label">SMS Open Rate</div></div>
-      <div class="stat"><div class="stat-num">5 min</div><div class="stat-label">To Go Live</div></div>
-      <div class="stat"><div class="stat-num">from £50</div><div class="stat-label">Per Event</div></div>
-      <div class="stat"><div class="stat-num">100%</div><div class="stat-label">Personalised</div></div>
+    <div class="hero-content">
+      <div class="hero-tag">
+        <span class="live-dot"></span>
+        Live &amp; Proven — 76 invites sent in one session
+      </div>
+      <h1>Beautiful Invitations.<br/><span class="accent">Sent in Minutes.</span></h1>
+      <p>Create a stunning personalised invitation page, upload your guest list, and send personalised SMS invites to every guest — all tracked live on your dashboard.</p>
+      <div class="hero-btns">
+        <a href="/app/" class="btn-primary">Create Your Invitation →</a>
+        <a href="#proof" class="btn-secondary">See It In Action</a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat">
+          <div class="stat-num" data-target="98" data-suffix="%">98%</div>
+          <div class="stat-label">SMS Open Rate</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">5 min</div>
+          <div class="stat-label">To Go Live</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">from £50</div>
+          <div class="stat-label">Per Event</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" data-target="100" data-suffix="%">100%</div>
+          <div class="stat-label">Personalised</div>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- PROOF BANNER -->
   <div class="proof-banner">
-    <p>✅ Proven in the real world — <span>76 personalised wedding invitations</span> sent, tracked, and RSVP'd in a single session. April 2026.</p>
+    <p>✅ Proven in the real world — <span>76 personalised wedding invitations</span> sent, tracked, and RSVPs collected in a single session. April 2026.</p>
   </div>
 
   <!-- HOW IT WORKS -->
   <section id="how-it-works">
-    <div class="section-label">The Process</div>
-    <h2 class="section-title">Six steps.<br/>Zero technical knowledge.</h2>
-    <p class="section-sub">InviteForge handles everything — you just answer the questions.</p>
+    <div class="section-label reveal">The Process</div>
+    <h2 class="section-title reveal reveal-d1">Six steps.<br/>Zero technical knowledge.</h2>
+    <p class="section-sub reveal reveal-d2">InviteForge handles everything — you just answer the questions.</p>
     <div class="steps">
-      <div class="step">
+      <div class="step reveal reveal-d1">
+        <div class="step-top-glow"></div>
         <div class="step-num">01</div>
         <div class="step-icon">🎉</div>
         <h3>Create Your Event</h3>
-        <p>Tell us the basics — event name, date, venue. Takes 60 seconds. We handle the rest.</p>
+        <p>Tell us the basics — event name, date, venue, dress code. Takes 60 seconds.</p>
       </div>
-      <div class="step">
+      <div class="step reveal reveal-d2">
+        <div class="step-top-glow"></div>
         <div class="step-num">02</div>
         <div class="step-icon">🎨</div>
         <h3>Choose Your Design</h3>
-        <p>Pick from 5 premium templates. Luxury dark, garden fresh, minimal, celebration, or corporate. One click applies everything.</p>
+        <p>Pick from 5 premium templates. Luxury dark, garden fresh, minimal, celebration, or corporate.</p>
       </div>
-      <div class="step">
+      <div class="step reveal reveal-d3">
+        <div class="step-top-glow"></div>
         <div class="step-num">03</div>
         <div class="step-icon">✍️</div>
         <h3>AI Writes Your Message</h3>
-        <p>Pick a tone — formal, warm, fun, or corporate. AI generates your personalised SMS with [Name] automatically swapped per guest.</p>
+        <p>Pick a tone — formal, warm, fun. AI generates your personalised SMS, [Name] swapped per guest.</p>
       </div>
-      <div class="step">
+      <div class="step reveal reveal-d1">
+        <div class="step-top-glow"></div>
         <div class="step-num">04</div>
         <div class="step-icon">📋</div>
         <h3>Upload Your Guest List</h3>
-        <p>Drop in a spreadsheet or CSV. We auto-detect names and numbers. Flag missing info before you send.</p>
+        <p>Drop in a spreadsheet or CSV. We auto-detect names and numbers — no formatting needed.</p>
       </div>
-      <div class="step">
+      <div class="step reveal reveal-d2">
+        <div class="step-top-glow"></div>
         <div class="step-num">05</div>
         <div class="step-icon">🚀</div>
         <h3>Send to Everyone</h3>
-        <p>One click. Personalised SMS fires to every guest simultaneously. Each one sees their name and your invitation link.</p>
+        <p>One click. Personalised SMS fires to every guest simultaneously, each with their own link.</p>
       </div>
-      <div class="step">
+      <div class="step reveal reveal-d3">
+        <div class="step-top-glow"></div>
         <div class="step-num">06</div>
         <div class="step-icon">📊</div>
         <h3>Track Everything Live</h3>
-        <p>Live dashboard shows delivery status, RSVP responses, guest counts, dietary requirements. Send reminders to non-responders.</p>
+        <p>Dashboard shows RSVPs, attendance, dietary requirements, hotel assignments — all live.</p>
       </div>
     </div>
   </section>
 
   <!-- TEMPLATES -->
   <section id="templates" class="templates-section">
-    <div class="section-label">Invitation Designs</div>
-    <h2 class="section-title">Five premium templates.<br/>All stunning.</h2>
-    <p class="section-sub">Every template is mobile-first, video-ready, and built to impress.</p>
+    <div class="section-label reveal">Invitation Designs</div>
+    <h2 class="section-title reveal reveal-d1">Five premium templates.<br/>All stunning.</h2>
+    <p class="section-sub reveal reveal-d2">Every template is mobile-first, video-ready, and built to impress on any device.</p>
     <div class="templates-grid">
-      <div class="template-card">
+      <div class="template-card reveal reveal-d1">
         <div class="template-preview template-luxury">
           <div class="template-badge">Most Popular</div>
-          <div style="font-family:'Playfair Display',serif;font-size:22px;color:#c9a96e;margin-bottom:8px;">Sarah & Thomas</div>
-          <div style="font-size:12px;color:#9ca3af;">12th July 2026 · London</div>
+          <div style="font-family:'Playfair Display',serif;font-size:24px;color:#c9a96e;margin-bottom:6px;">Sarah &amp; Thomas</div>
+          <div class="tmpl-subtitle" style="color:#9ca3af;">12th July 2026 · London</div>
+          <div style="margin-top:16px;font-size:11px;color:rgba(201,169,110,0.5);letter-spacing:2px;">RSVP BY 1ST JUNE</div>
         </div>
         <div class="template-label">Luxury Dark</div>
       </div>
-      <div class="template-card">
+      <div class="template-card reveal reveal-d2">
         <div class="template-preview template-garden">
-          <div style="font-family:'Playfair Display',serif;font-size:22px;color:#166534;margin-bottom:8px;">Sarah's 30th</div>
-          <div style="font-size:12px;color:#4b7a52;">Garden Party · June 2026</div>
+          <div style="font-family:'Playfair Display',serif;font-size:24px;color:#166534;margin-bottom:6px;">Sarah's 30th</div>
+          <div class="tmpl-subtitle" style="color:#4b7a52;">Garden Party · June 2026</div>
+          <div style="margin-top:14px;background:rgba(22,101,52,0.1);border:1px solid rgba(22,101,52,0.2);border-radius:8px;padding:8px 16px;font-size:12px;color:#166534;">🌿 Dress: Summer Smart</div>
         </div>
         <div class="template-label">Garden Fresh</div>
       </div>
-      <div class="template-card">
+      <div class="template-card reveal reveal-d3">
         <div class="template-preview template-minimal">
-          <div style="font-family:'Playfair Display',serif;font-size:22px;color:#0f172a;margin-bottom:8px;">The Joneses</div>
-          <div style="font-size:12px;color:#64748b;">Anniversary Dinner</div>
+          <div style="font-family:'Playfair Display',serif;font-size:24px;color:#0f172a;margin-bottom:6px;">The Joneses</div>
+          <div class="tmpl-subtitle" style="color:#64748b;">Anniversary Dinner</div>
+          <div style="margin-top:14px;width:40px;height:2px;background:#0f172a;margin-left:auto;margin-right:auto;"></div>
+          <div style="margin-top:10px;font-size:12px;color:#94a3b8;">Black Tie · July 2026</div>
         </div>
         <div class="template-label">Clean Minimal</div>
       </div>
-      <div class="template-card">
+      <div class="template-card reveal reveal-d4">
         <div class="template-preview template-celebration">
-          <div style="font-family:'Playfair Display',serif;font-size:22px;color:#fbbf24;margin-bottom:8px;">🎉 Jake turns 21!</div>
-          <div style="font-size:12px;color:#c4b5fd;">The party of the year</div>
+          <div style="font-family:'Playfair Display',serif;font-size:24px;color:#fbbf24;margin-bottom:6px;">🎉 Jake turns 21!</div>
+          <div class="tmpl-subtitle" style="color:#c4b5fd;">The party of the year</div>
+          <div style="margin-top:14px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:8px 16px;font-size:12px;color:#fbbf24;">Saturday 14th June</div>
         </div>
         <div class="template-label">Celebration</div>
       </div>
-      <div class="template-card">
+      <div class="template-card reveal reveal-d5">
         <div class="template-preview template-corporate">
-          <div style="font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#e2e8f0;margin-bottom:8px;">NEXUS GROUP</div>
-          <div style="font-size:12px;color:#64748b;">Annual Client Evening · 2026</div>
+          <div style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:3px;color:#94a3b8;margin-bottom:12px;">NEXUS GROUP</div>
+          <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:600;color:#e2e8f0;margin-bottom:6px;">Annual Client Evening</div>
+          <div class="tmpl-subtitle" style="color:#475569;">2026 · London</div>
         </div>
         <div class="template-label">Corporate</div>
       </div>
@@ -460,58 +751,103 @@
 
   <!-- FEATURES -->
   <section id="features">
-    <div class="section-label">What's Included</div>
-    <h2 class="section-title">Everything you need.<br/>Nothing you don't.</h2>
+    <div class="section-label reveal">What's Included</div>
+    <h2 class="section-title reveal reveal-d1">Everything you need.<br/>Nothing you don't.</h2>
     <div class="features-grid">
-      <div class="feature">
+      <div class="feature reveal reveal-d1">
         <div class="feature-icon">📱</div>
         <h3>Personalised SMS</h3>
         <p>Every guest receives a message with their own name. Not a group blast — a personal invitation. SMS has a 98% open rate — your invite gets read.</p>
       </div>
-      <div class="feature">
+      <div class="feature reveal reveal-d2">
         <div class="feature-icon">🌐</div>
         <h3>Stunning Invitation Page</h3>
-        <p>A full luxury web page with video at the top, your event details, and an RSVP form. Hosted instantly on a custom link.</p>
+        <p>A full luxury web page with video, event details, timeline of the day, dress code, and an RSVP form. Hosted instantly on a custom link.</p>
       </div>
-      <div class="feature">
+      <div class="feature reveal reveal-d3">
         <div class="feature-icon">🤖</div>
         <h3>AI Message Writer</h3>
-        <p>Pick a tone, AI generates your message. Edit it, approve it, or let it go. Your words, polished by AI.</p>
+        <p>Pick a tone, AI generates your message. Edit it freely. Your words, polished by AI. Formal, warm, fun, or corporate — all covered.</p>
       </div>
-      <div class="feature">
+      <div class="feature reveal reveal-d1">
         <div class="feature-icon">📊</div>
         <h3>Live RSVP Dashboard</h3>
-        <p>See who's coming, who's not, dietary requirements, plus-ones — all in real time as responses come in.</p>
+        <p>See attendance breakdown, dietary requirements, hotel assignments, and a countdown to your event — all updating in real time.</p>
       </div>
-      <div class="feature">
+      <div class="feature reveal reveal-d2">
         <div class="feature-icon">✅</div>
-        <h3>Delivery Tracking</h3>
-        <p>Green tick per guest when their invite is sent. Know exactly who received it and who didn't.</p>
+        <h3>Send Tracking</h3>
+        <p>Track exactly who's been invited and who hasn't. Mark as invited per guest, see the split — never lose track of who got their invite.</p>
       </div>
-      <div class="feature">
-        <div class="feature-icon">🔔</div>
-        <h3>Instant Notifications</h3>
-        <p>Get notified the moment a guest RSVPs. No need to check the dashboard — it comes to you.</p>
+      <div class="feature reveal reveal-d3">
+        <div class="feature-icon">🏨</div>
+        <h3>Hotel Management</h3>
+        <p>Assign guests to hotels, export the hotel list as a spreadsheet. Keep everything in one place for multi-venue or destination events.</p>
       </div>
-      <div class="feature" style="border-color:rgba(34,197,94,0.25);background:rgba(34,197,94,0.03);">
-        <div class="feature-icon">📱</div>
+      <div class="feature featured-green reveal reveal-d1">
+        <div class="feature-icon">💬</div>
         <h3>Send from Your Own Phone</h3>
-        <p>Choose to send via your personal SMS or WhatsApp instead. Messages come from your real number — zero carrier spam filtering, 100% delivered every time.</p>
+        <p>Send via your personal SMS or WhatsApp — messages come from your real number. Zero carrier spam filtering, 100% deliverability guaranteed.</p>
       </div>
-      <div class="feature">
-        <div class="feature-icon">📤</div>
+      <div class="feature reveal reveal-d2">
+        <div class="feature-icon">🔔</div>
         <h3>Reminder Blasts</h3>
-        <p>One-click reminder to everyone who hasn't responded. Personalised again, so it never feels like spam.</p>
+        <p>One-click reminder to everyone who hasn't responded yet. Personalised again — so it never feels like spam.</p>
       </div>
-      <div class="feature">
-        <div class="feature-icon">📁</div>
-        <h3>Export Everything</h3>
-        <p>Download your full guest list, RSVP responses, and dietary data as a spreadsheet at any time.</p>
-      </div>
-      <div class="feature">
+      <div class="feature reveal reveal-d3">
         <div class="feature-icon">🎬</div>
         <h3>Video Support</h3>
-        <p>Upload a personal video that plays at the top of your invitation page. The single biggest impact on how premium it feels.</p>
+        <p>Upload a personal video that plays at the top of your invitation page. The single biggest factor in how premium it feels.</p>
+      </div>
+      <div class="feature reveal reveal-d1">
+        <div class="feature-icon">📁</div>
+        <h3>Export Everything</h3>
+        <p>Download your full guest list, RSVP responses, hotel assignments, and dietary data as a spreadsheet at any time.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section id="testimonials" class="testimonials-section">
+    <div class="section-label reveal">What People Say</div>
+    <h2 class="section-title reveal reveal-d1">Used by real people.<br/>For real events.</h2>
+    <p class="section-sub reveal reveal-d2">From intimate dinners to full weddings — every event deserves an invitation that lands.</p>
+    <div class="testimonials-grid">
+      <div class="testimonial-card reveal reveal-d1">
+        <div class="testimonial-quote-mark">"</div>
+        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-quote">"We invited 76 guests to our wedding in one afternoon. Every single person got a personalised message with their name — and RSVPs started coming in within the hour."</div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">C</div>
+          <div>
+            <div class="testimonial-name">Carmel &amp; James</div>
+            <div class="testimonial-event">Wedding · Mulranny, Co Mayo · May 2026</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card reveal reveal-d2">
+        <div class="testimonial-quote-mark">"</div>
+        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-quote">"The dashboard is incredible. Watching RSVPs come in live, seeing who's attending, who needs a vegetarian meal — everything in one place. My guests were genuinely impressed."</div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">S</div>
+          <div>
+            <div class="testimonial-name">Sophie R.</div>
+            <div class="testimonial-event">Birthday Party · London · March 2026</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card reveal reveal-d3">
+        <div class="testimonial-quote-mark">"</div>
+        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-quote">"I was sceptical about sending SMS invites for a corporate dinner — but the personalised messages and the luxury invite page absolutely nailed it. Several clients commented on how polished it felt."</div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">M</div>
+          <div>
+            <div class="testimonial-name">Marcus T.</div>
+            <div class="testimonial-event">Corporate Dinner · Manchester · April 2026</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -520,23 +856,26 @@
   <section id="proof" class="proof-section">
     <div class="proof-inner">
       <div>
-        <div class="section-label">Live Proof</div>
-        <h2 class="section-title">76 real wedding invites.<br/>One session.</h2>
-        <p class="section-sub">A real couple used InviteForge to invite their full wedding guest list — 76 personalised SMS messages sent, tracked, and RSVPs collected in one session.</p>
+        <div class="section-label reveal">Live Proof</div>
+        <h2 class="section-title reveal reveal-d1">76 real wedding invites.<br/>One session.</h2>
+        <p class="section-sub reveal reveal-d2">A real couple used InviteForge to invite their full wedding guest list — 76 personalised SMS messages sent, tracked, and RSVPs collected in under an hour.</p>
         <div class="proof-stats">
-          <div class="proof-stat">
+          <div class="proof-stat reveal reveal-d1">
+            <div class="proof-stat-icon">✉️</div>
             <div>
               <div class="proof-stat-num">76</div>
               <div class="proof-stat-label">Personalised SMS sent successfully</div>
             </div>
           </div>
-          <div class="proof-stat">
+          <div class="proof-stat reveal reveal-d2">
+            <div class="proof-stat-icon">💰</div>
             <div>
               <div class="proof-stat-num">under £1</div>
-              <div class="proof-stat-label">Per guest, all-in — invite page included</div>
+              <div class="proof-stat-label">Per guest — invite page included</div>
             </div>
           </div>
-          <div class="proof-stat">
+          <div class="proof-stat reveal reveal-d3">
+            <div class="proof-stat-icon">⚡</div>
             <div>
               <div class="proof-stat-num">5 min</div>
               <div class="proof-stat-label">From upload to all invites sent</div>
@@ -544,16 +883,17 @@
           </div>
         </div>
       </div>
-      <div class="proof-invite-preview">
-        <div style="font-size:11px;color:#c9a96e;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;">Sample SMS Received</div>
-        <div style="background:rgba(255,255,255,0.05);border-radius:16px;padding:24px;text-align:left;font-size:14px;line-height:1.8;color:#e8d5a3;border:1px solid rgba(201,169,110,0.15);">
-          Dear <strong style="color:#c9a96e;">Emma & Family</strong>, Sarah Louise Parker and Thomas James Reid personally invite you to their wedding day. It wouldn't be the same without you. Click the link below for your full invitation<br/><br/>
-          <span style="color:#60a5fa;text-decoration:underline;">inviteforge.co.uk/invite/3a9f2b1c</span>
+      <div class="proof-sms-card reveal reveal-d2">
+        <div class="proof-sms-label">Sample SMS Received</div>
+        <div class="sms-bubble">
+          Dear <span class="sms-name">Emma &amp; Family</span>, Sarah Louise Parker and Thomas James Reid personally invite you to their wedding day. It wouldn't be the same without you. Click the link below for your full invitation<br/><br/>
+          <span class="sms-link">inviteforge.co.uk/invite/3a9f2b1c</span>
         </div>
-        <div class="invite-details">
-          <div class="invite-detail">✅ Delivered instantly</div>
-          <div class="invite-detail">✅ Name personalised automatically</div>
-          <div class="invite-detail">✅ Tracked in live dashboard</div>
+        <div class="proof-ticks">
+          <div class="proof-tick">Delivered instantly to Emma's phone</div>
+          <div class="proof-tick">Name personalised automatically</div>
+          <div class="proof-tick">Tracked in live dashboard</div>
+          <div class="proof-tick">RSVP returned same day</div>
         </div>
       </div>
     </div>
@@ -561,69 +901,127 @@
 
   <!-- PRICING -->
   <section id="pricing">
-    <div class="section-label">Simple Pricing</div>
-    <h2 class="section-title">One event. One price.<br/>No subscriptions.</h2>
-    <p class="section-sub">Pay per event. Everything included. No monthly fees, no contracts, no surprises.</p>
+    <div class="section-label reveal">Simple Pricing</div>
+    <h2 class="section-title reveal reveal-d1">One event. One price.<br/>No subscriptions.</h2>
+    <p class="section-sub reveal reveal-d2">Pay per event. Everything included. No monthly fees, no contracts, no surprises.</p>
     <div class="pricing-grid">
-      <div class="price-card">
+      <div class="price-card reveal reveal-d1">
         <div class="price-name">Invitation Page</div>
         <div class="price-amount">£50 <span>flat</span></div>
-        <div class="price-desc">Your event, live on a permanent URL with luxury design and full RSVP tracking. Included with every send option.</div>
+        <div class="price-desc">Your event, live on a permanent URL with luxury design and full RSVP tracking.</div>
         <ul class="price-features">
           <li>Permanent invitation URL</li>
           <li>5 luxury templates</li>
           <li>Video &amp; photo support</li>
           <li>Live RSVP dashboard</li>
-          <li>Guest dietary tracking</li>
+          <li>Dietary &amp; hotel tracking</li>
           <li>CSV export</li>
           <li>Dashboard magic link (email)</li>
         </ul>
         <a href="/app/" class="price-btn price-btn-outline">Create Your Invitation →</a>
       </div>
-      <div class="price-card featured">
+      <div class="price-card featured reveal reveal-d2">
+        <div class="featured-badge">MOST POPULAR</div>
         <div class="price-name">Auto-Send (Twilio SMS)</div>
         <div class="price-amount">£50 <span>+ £0.30/SMS</span></div>
-        <div class="price-desc">We send every message automatically. Personalised per guest with their name and a direct invite link. Completely hands off.</div>
+        <div class="price-desc">We send every message automatically. Personalised per guest, completely hands off.</div>
         <ul class="price-features">
           <li>Everything in Invitation Page</li>
           <li>Automated personalised SMS blast</li>
           <li>Each guest gets their own link</li>
           <li>Send up to 500 guests</li>
           <li>One-click reminder blast</li>
-          <li>Delivery status per guest</li>
+          <li>Send tracking per guest</li>
         </ul>
         <a href="/app/" class="price-btn price-btn-filled">Get Started →</a>
       </div>
-      <div class="price-card" style="border-color:rgba(34,197,94,0.3);">
-        <div class="price-name" style="color:#22c55e;">Send from My Phone</div>
+      <div class="price-card price-card-green reveal reveal-d3">
+        <div class="price-name price-name-green">Send from My Phone</div>
         <div class="price-amount">£75 <span>flat</span></div>
-        <div class="price-desc">Send from your own SMS or WhatsApp. Messages come from your real number — zero spam filtering, 100% guaranteed delivery.</div>
+        <div class="price-desc">Send from your own SMS or WhatsApp. Zero spam filtering, 100% guaranteed delivery.</div>
         <ul class="price-features">
           <li>Everything in Invitation Page</li>
           <li>Send via your own SMS</li>
           <li>Send via your own WhatsApp</li>
           <li>Zero carrier spam filtering</li>
           <li>100% deliverability</li>
-          <li>Pre-filled per-guest send page</li>
+          <li>Pre-filled per-guest send panel</li>
         </ul>
-        <a href="/app/" class="price-btn" style="border:1px solid #22c55e;color:#22c55e;" onmouseover="this.style.background='#22c55e';this.style.color='#0a0e1a'" onmouseout="this.style.background='';this.style.color='#22c55e'">Best for Deliverability →</a>
+        <a href="/app/" class="price-btn price-btn-green">Best for Deliverability →</a>
       </div>
     </div>
   </section>
 
   <!-- CTA -->
   <section class="cta-section">
-    <h2>Ready to send your<br/><span style="color:var(--gold)">first invitation?</span></h2>
-    <p>Create your invitation in 5 minutes. Pay only when you're ready to send.</p>
-    <a href="/app/" class="btn-primary" style="font-size:18px;padding:20px 52px;">Create Your Invitation →</a>
+    <div class="cta-bg"></div>
+    <div class="cta-grid"></div>
+    <h2 class="reveal">Ready to send your<br/><span style="color:var(--gold)">first invitation?</span></h2>
+    <p class="reveal reveal-d1">Create your invitation in 5 minutes. Pay only when you're ready to send.</p>
+    <a href="/app/" class="btn-primary reveal reveal-d2">Create Your Invitation →</a>
+    <p class="cta-note reveal reveal-d3">No credit card required to start</p>
   </section>
 
   <!-- FOOTER -->
   <footer>
-    <div class="logo">InviteForge</div>
+    <div class="logo">Invite<span>Forge</span></div>
     <p>© 2026 InviteForge. Built to make every invitation unforgettable.</p>
-    <p style="color:#4b5563;font-size:12px;">hello@inviteforge.co.uk</p>
+    <div class="footer-links">
+      <a href="mailto:hello@inviteforge.co.uk">hello@inviteforge.co.uk</a>
+    </div>
   </footer>
 
+  <script>
+    // ── Scroll reveal ───────────────────────────────
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          revealObserver.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+    // ── Animated counters ───────────────────────────
+    function animateCounter(el) {
+      const target = parseInt(el.dataset.target, 10);
+      const suffix = el.dataset.suffix || '';
+      if (isNaN(target)) return;
+      const duration = 1800;
+      const start = performance.now();
+      const update = (now) => {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.round(eased * target) + suffix;
+        if (progress < 1) requestAnimationFrame(update);
+      };
+      requestAnimationFrame(update);
+    }
+
+    const counterObserver = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting && e.target.dataset.target) {
+          animateCounter(e.target);
+          counterObserver.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.5 });
+
+    document.querySelectorAll('[data-target]').forEach(el => counterObserver.observe(el));
+
+    // ── Nav scroll tint ─────────────────────────────
+    window.addEventListener('scroll', () => {
+      const nav = document.querySelector('nav');
+      if (window.scrollY > 60) {
+        nav.style.background = 'rgba(10,14,26,0.97)';
+        nav.style.borderBottomColor = 'rgba(201,169,110,0.2)';
+      } else {
+        nav.style.background = 'rgba(10,14,26,0.85)';
+        nav.style.borderBottomColor = 'rgba(201,169,110,0.12)';
+      }
+    }, { passive: true });
+  </script>
 </body>
 </html>
