@@ -249,6 +249,14 @@ class EventCreateRequest(BaseModel):
     sender: str = "InviteForge"
     media_url: str = ""
     guests: list = []  # [{name, number}] — stored server-side for account isolation
+    # v2 additions
+    attendance_types: list = []    # e.g. ["Day", "Evening", "Full Day & Evening"]
+    timeline: list = []            # [{time, label}] schedule entries
+    hotels_enabled: bool = False
+    hotel_list: list = []          # ["Hilton", "Marriott"]
+    groups: list = []              # [{id, name}] guest segments
+    dress_code: str = ""           # e.g. "Black Tie", "Smart Casual"
+    hashtag: str = ""              # e.g. "#SarahAndJames2026"
 
 class RSVPRequest(BaseModel):
     guest_name: str  = _Field("",  max_length=100)
@@ -256,6 +264,24 @@ class RSVPRequest(BaseModel):
     guests_count: int = 1
     dietary: str     = _Field("",  max_length=500)
     message: str     = _Field("",  max_length=1000)
+    attendance_type: str = _Field("", max_length=50)   # v2 — Day/Evening/Both
+    group_id: str    = _Field("", max_length=50)        # v2 — which invite group
+
+class PatchEventRequest(BaseModel):
+    auth_token: str = ""
+    hotels_enabled: Optional[bool] = None
+    hotel_list: Optional[list] = None
+    attendance_types: Optional[list] = None
+    timeline: Optional[list] = None
+    groups: Optional[list] = None
+    dress_code: Optional[str] = None
+    hashtag: Optional[str] = None
+
+class MarkInvitedRequest(BaseModel):
+    auth_token: str = ""
+    guest_name: str = ""
+    invited_via: str = "whatsapp"  # whatsapp | sms | manual
+    mark_all: bool = False          # if True, mark every guest in the list
 
 class SaveGuestsRequest(BaseModel):
     event_id: str
@@ -343,6 +369,15 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{EVENT_NAME} — You're Invited</title>
+  <!-- Open Graph — makes WhatsApp / Facebook previews look stunning -->
+  <meta property="og:title" content="{OG_TITLE}"/>
+  <meta property="og:description" content="{OG_DESCRIPTION}"/>
+  <meta property="og:url" content="{OG_URL}"/>
+  <meta property="og:type" content="website"/>
+  {OG_IMAGE_TAG}
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="{OG_TITLE}"/>
+  <meta name="twitter:description" content="{OG_DESCRIPTION}"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <style>
@@ -508,10 +543,33 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
     }}
     footer a {{ color: var(--gold); text-decoration: none; opacity: 0.6; }}
 
+    /* ── TIMELINE ── */
+    .timeline-section {{ padding: 60px 24px; background: rgba(255,255,255,0.01); border-top: 1px solid rgba(201,169,110,0.08); border-bottom: 1px solid rgba(201,169,110,0.08); }}
+    .timeline-inner {{ max-width: 680px; margin: 0 auto; }}
+    .timeline-list {{ position: relative; padding-left: 0; list-style: none; }}
+    .timeline-list::before {{ content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: linear-gradient(180deg, transparent, rgba(201,169,110,0.3) 10%, rgba(201,169,110,0.3) 90%, transparent); transform: translateX(-50%); }}
+    .tl-item {{ display: flex; align-items: flex-start; gap: 0; margin-bottom: 28px; position: relative; }}
+    .tl-item:nth-child(odd) {{ flex-direction: row-reverse; }}
+    .tl-item:nth-child(odd) .tl-content {{ text-align: right; }}
+    .tl-dot {{ position: absolute; left: 50%; transform: translateX(-50%); width: 10px; height: 10px; background: var(--gold); border-radius: 50%; margin-top: 6px; box-shadow: 0 0 12px rgba(201,169,110,0.5); flex-shrink: 0; }}
+    .tl-content {{ width: calc(50% - 24px); padding: 0 16px; }}
+    .tl-time {{ font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }}
+    .tl-label {{ font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 400; color: var(--white); line-height: 1.4; }}
+
+    /* ── ATTENDANCE TYPE RADIOS ── */
+    .attend-type-grid {{ display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }}
+    .attend-type-btn {{ padding: 12px 20px; border-radius: 100px; border: 1.5px solid rgba(201,169,110,0.35); background: rgba(201,169,110,0.04); color: rgba(248,246,240,0.75); font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }}
+    .attend-type-btn.selected {{ background: rgba(201,169,110,0.18); border-color: var(--gold); color: var(--gold); }}
+
     @media (max-width: 600px) {{
       .message-block {{ padding: 32px 24px; }}
       .hero-cta {{ flex-direction: column; align-items: center; }}
       .btn-rsvp, .btn-details {{ width: 100%; text-align: center; }}
+      .timeline-list::before {{ left: 16px; transform: none; }}
+      .tl-item, .tl-item:nth-child(odd) {{ flex-direction: row; }}
+      .tl-item:nth-child(odd) .tl-content {{ text-align: left; }}
+      .tl-dot {{ left: 16px; transform: translateX(-50%); }}
+      .tl-content {{ width: calc(100% - 48px); margin-left: 40px; padding: 0; }}
     }}
   </style>
 </head>
@@ -564,8 +622,12 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
       {VENUE_CARD}
       {TIME_CARD}
       {DEADLINE_CARD}
+      {DRESSCODE_CARD}
+      {HASHTAG_CARD}
     </div>
   </section>
+
+  {TIMELINE_SECTION}
 
   <section class="rsvp-section" id="rsvp">
     <div class="rsvp-inner">
@@ -576,6 +638,7 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
           <label class="rsvp-label">Your Name</label>
           <input class="rsvp-input" id="rsvpName" placeholder="Full name" value=""/>
         </div>
+        {ATTENDANCE_TYPE_FIELD}
         <div class="rsvp-group">
           <label class="rsvp-label">Will you be attending?</label>
           <div class="rsvp-attending">
@@ -733,6 +796,15 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
       document.getElementById('btnYes').classList.toggle('selected', val === 'yes');
       document.getElementById('btnNo').classList.toggle('selected', val === 'no');
       document.getElementById('rsvpYesFields').style.display = val === 'yes' ? 'block' : 'none';
+      // If attendance type field exists, only show when attending
+      var atg = document.getElementById('attendTypeGroup');
+      if (atg) atg.style.display = val === 'yes' ? 'block' : 'none';
+    }}
+
+    function selectAttendType(btn, val) {{
+      document.querySelectorAll('.attend-type-btn').forEach(function(b) {{ b.classList.remove('selected'); }});
+      btn.classList.add('selected');
+      document.getElementById('rsvpAttendType').value = val;
     }}
 
     async function submitRSVP() {{
@@ -744,11 +816,13 @@ INVITE_TEMPLATE = """<!DOCTYPE html>
       if (!attending) {{ showRsvpError('Please select whether you are attending.'); return; }}
       btn.disabled = true;
       btn.textContent = 'Sending...';
+      const attendTypeEl = document.getElementById('rsvpAttendType');
       const payload = {{
         guest_name: name, attending,
         guests_count: parseInt(document.getElementById('rsvpGuests')?.value || 1),
         dietary: document.getElementById('rsvpDietary')?.value || '',
         message: document.getElementById('rsvpMessage').value || '',
+        attendance_type: attendTypeEl ? attendTypeEl.value : '',
       }};
       try {{
         const res = await fetch('/api/rsvp/' + EVENT_ID, {{
@@ -1041,6 +1115,55 @@ def build_invite_page(event: dict, event_id: str) -> str:
     }
     invite_tag = type_labels.get(event_type_raw, "You're Invited")
 
+    # Extra detail cards (dress code, hashtag)
+    dress_code = event.get("dress_code", "")
+    dresscode_card = f'<div class="detail-card"><div class="detail-icon">👗</div><div class="detail-label">Dress Code</div><div class="detail-value">{html.escape(dress_code)}</div></div>' if dress_code else ""
+    hashtag = event.get("hashtag", "")
+    hashtag_card = f'<div class="detail-card"><div class="detail-icon">📸</div><div class="detail-label">Share Your Photos</div><div class="detail-value">{html.escape(hashtag)}</div></div>' if hashtag else ""
+
+    # Timeline section
+    timeline = event.get("timeline", [])
+    if timeline:
+        tl_items = ""
+        for entry in timeline:
+            t_time = html.escape(str(entry.get("time", "")))
+            t_label = html.escape(str(entry.get("label", "")))
+            tl_items += f'<li class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-time">{t_time}</div><div class="tl-label">{t_label}</div></div></li>'
+        timeline_section = f'''<section class="timeline-section">
+    <div class="timeline-inner">
+      <div class="section-label" style="max-width:680px;margin:0 auto 40px;">Timeline of the Day</div>
+      <ul class="timeline-list">{tl_items}</ul>
+    </div>
+  </section>'''
+    else:
+        timeline_section = ""
+
+    # Attendance type radio field
+    attendance_types = event.get("attendance_types", [])
+    if attendance_types:
+        btns = ""
+        for i, at in enumerate(attendance_types):
+            at_e = html.escape(at)
+            btns += f'<button type="button" class="attend-type-btn{" selected" if i == 0 else ""}" onclick="selectAttendType(this,\'{at_e}\')">{at_e}</button>'
+        first_val = html.escape(attendance_types[0]) if attendance_types else ""
+        attendance_type_field = f'''<div class="rsvp-group" id="attendTypeGroup">
+          <label class="rsvp-label">Which part will you be attending?</label>
+          <div class="attend-type-grid">{btns}</div>
+          <input type="hidden" id="rsvpAttendType" value="{first_val}"/>
+        </div>'''
+    else:
+        attendance_type_field = '<input type="hidden" id="rsvpAttendType" value=""/>'
+
+    # OG meta
+    og_title = f"{event_name_safe} — You're Invited"
+    og_desc_parts = [p for p in [date_time_str, venue] if p]
+    og_description = " · ".join(og_desc_parts) if og_desc_parts else "You're invited — tap to view your personal invitation."
+    invite_url_full = event.get("invite_url", f"{PUBLIC_URL}/invite/{event_id}" if PUBLIC_URL else f"/invite/{event_id}")
+    if media_url and not re.search(r'\.(mp4|mov|webm)$', media_url, re.I):
+        og_image_tag = f'<meta property="og:image" content="{html.escape(media_url, quote=True)}"/>'
+    else:
+        og_image_tag = ""
+
     return INVITE_TEMPLATE.format(
         EVENT_NAME=event_name_safe,
         INVITE_TAG=html.escape(invite_tag),
@@ -1054,10 +1177,18 @@ def build_invite_page(event: dict, event_id: str) -> str:
         VENUE_CARD=venue_card,
         TIME_CARD=time_card,
         DEADLINE_CARD=deadline_card,
+        DRESSCODE_CARD=dresscode_card,
+        HASHTAG_CARD=hashtag_card,
+        TIMELINE_SECTION=timeline_section,
+        ATTENDANCE_TYPE_FIELD=attendance_type_field,
         RAW_DATE=json.dumps(raw_date),
         RAW_TIME=json.dumps(raw_time),
         EVENT_NAME_CAL=json.dumps(event.get("name", "")),
         VENUE_CAL=json.dumps(venue),
+        OG_TITLE=html.escape(og_title),
+        OG_DESCRIPTION=html.escape(og_description),
+        OG_URL=html.escape(invite_url_full, quote=True),
+        OG_IMAGE_TAG=og_image_tag,
     )
 
 
@@ -1138,6 +1269,14 @@ async def create_event(req: EventCreateRequest, request: Request):
         "sent": False,
         "rsvps": [],
         "guests": req.guests,  # [{name, number}] stored server-side per account
+        # v2 fields
+        "attendance_types": req.attendance_types,
+        "timeline": req.timeline,
+        "hotels_enabled": req.hotels_enabled,
+        "hotel_list": req.hotel_list,
+        "groups": req.groups,
+        "dress_code": req.dress_code,
+        "hashtag": req.hashtag,
     }
     save_events(events)
     email_sent = False
@@ -1673,6 +1812,8 @@ async def handle_rsvp(event_id: str, data: RSVPRequest, request: Request):
         "guests_count": data.guests_count,
         "dietary": data.dietary,
         "message": data.message,
+        "attendance_type": data.attendance_type,  # v2
+        "group_id": data.group_id,                # v2
         "timestamp": datetime.now().isoformat(),
     }
     # Upsert: update existing RSVP for this guest instead of duplicating
@@ -1782,15 +1923,51 @@ async def get_rsvps(event_id: str, token: str = "", request: Request = None):
             raise HTTPException(403, detail="Not authorised for this event")
     rsvps = event.get("rsvps", [])
     attending = [r for r in rsvps if r.get("attending") == "yes"]
-    declined = [r for r in rsvps if r.get("attending") == "no"]
+    declined  = [r for r in rsvps if r.get("attending") == "no"]
+
+    # Dietary breakdown — count non-empty dietary strings
+    dietary_breakdown: dict = {}
+    for r in attending:
+        d = (r.get("dietary") or "").strip()
+        if d:
+            dietary_breakdown[d] = dietary_breakdown.get(d, 0) + 1
+
+    # Attendance-type breakdown (Day / Evening / Both / etc.)
+    attendance_breakdown: dict = {}
+    for r in rsvps:
+        at = (r.get("attendance_type") or "").strip()
+        if at:
+            attendance_breakdown[at] = attendance_breakdown.get(at, 0) + 1
+
+    # Countdown days to event
+    countdown_days = None
+    raw_date = event.get("date", "")
+    if raw_date:
+        try:
+            event_dt = datetime.strptime(raw_date, "%Y-%m-%d")
+            countdown_days = (event_dt - datetime.now()).days
+        except Exception:
+            pass
+
     return {
         "event_id": event_id,
         "event_name": event.get("name"),
+        "date": raw_date,
         "rsvps": rsvps,
         "total": len(rsvps),
         "attending": len(attending),
         "declined": len(declined),
         "total_guests": sum(r.get("guests_count", 1) for r in attending),
+        "dietary_breakdown": dietary_breakdown,
+        "attendance_breakdown": attendance_breakdown,
+        "countdown_days": countdown_days,
+        "guests": event.get("guests", []),         # full guest list with invited_at tracking
+        "total_invited": len(event.get("guests", [])),
+        "attendance_types": event.get("attendance_types", []),
+        "timeline": event.get("timeline", []),
+        "hotels_enabled": event.get("hotels_enabled", False),
+        "hotel_list": event.get("hotel_list", []),
+        "groups": event.get("groups", []),
     }
 
 class LoginRequest(BaseModel):
@@ -1928,15 +2105,120 @@ async def get_event_status(event_id: str):
     event = events.get(event_id)
     if not event:
         raise HTTPException(404, detail="Event not found")
+    raw_date = event.get("date", "")
+    countdown_days = None
+    if raw_date:
+        try:
+            event_dt = datetime.strptime(raw_date, "%Y-%m-%d")
+            countdown_days = (event_dt - datetime.now()).days
+        except Exception:
+            pass
     return {
         "event_id": event_id,
         "event_name": event.get("name", ""),
+        "date": raw_date,
         "sent": event.get("sent", False),
         "sent_count": event.get("sent_count", 0),
         "failed_count": event.get("failed_count", 0),
         "invite_url": event.get("invite_url", ""),
         "has_email": bool(event.get("host_email", "")),
+        "countdown_days": countdown_days,
     }
+
+
+@app.patch("/api/event/{event_id}")
+async def patch_event(event_id: str, req: PatchEventRequest, request: Request):
+    """Update mutable event settings (hotels, timeline, attendance types, groups)."""
+    events = load_events()
+    event = events.get(event_id)
+    if not event:
+        raise HTTPException(404, detail="Event not found")
+    user_id = auth_module.get_current_user_id(request)
+    stored_token = event.get("auth_token", "")
+    owns_via_jwt = user_id and event.get("user_id") == user_id
+    owns_via_token = stored_token and req.auth_token == stored_token
+    if not owns_via_jwt and not owns_via_token:
+        raise HTTPException(403, detail="Not authorised")
+    if req.hotels_enabled is not None:
+        event["hotels_enabled"] = req.hotels_enabled
+    if req.hotel_list is not None:
+        event["hotel_list"] = req.hotel_list
+    if req.attendance_types is not None:
+        event["attendance_types"] = req.attendance_types
+    if req.timeline is not None:
+        event["timeline"] = req.timeline
+    if req.groups is not None:
+        event["groups"] = req.groups
+    if req.dress_code is not None:
+        event["dress_code"] = req.dress_code
+    if req.hashtag is not None:
+        event["hashtag"] = req.hashtag
+    save_events(events)
+    return {"success": True}
+
+
+@app.post("/api/event/{event_id}/mark-invited")
+async def mark_invited(event_id: str, req: MarkInvitedRequest, request: Request):
+    """Mark one guest (or all guests) as invited — records timestamp + channel."""
+    events = load_events()
+    event = events.get(event_id)
+    if not event:
+        raise HTTPException(404, detail="Event not found")
+    user_id = auth_module.get_current_user_id(request)
+    stored_token = event.get("auth_token", "")
+    owns_via_jwt = user_id and event.get("user_id") == user_id
+    owns_via_token = stored_token and req.auth_token == stored_token
+    if not owns_via_jwt and not owns_via_token:
+        raise HTTPException(403, detail="Not authorised")
+    guests = event.get("guests", [])
+    now_iso = datetime.now().isoformat()
+    if req.mark_all:
+        for g in guests:
+            if not g.get("invited_at"):
+                g["invited_at"] = now_iso
+                g["invited_via"] = req.invited_via or "manual"
+        count = len(guests)
+    else:
+        name_lower = req.guest_name.strip().lower()
+        count = 0
+        for g in guests:
+            if g.get("name", "").lower() == name_lower:
+                g["invited_at"] = now_iso
+                g["invited_via"] = req.invited_via or "manual"
+                count += 1
+                break
+        if count == 0:
+            # Guest not in stored list — append a minimal entry
+            guests.append({"name": req.guest_name.strip(), "invited_at": now_iso, "invited_via": req.invited_via or "manual"})
+            count = 1
+    event["guests"] = guests
+    save_events(events)
+    return {"success": True, "marked": count}
+
+
+@app.post("/api/event/{event_id}/hotel-assign")
+async def hotel_assign(event_id: str, request: Request):
+    """Assign a hotel to a guest — body: {auth_token, guest_name, hotel}."""
+    body = await request.json()
+    events = load_events()
+    event = events.get(event_id)
+    if not event:
+        raise HTTPException(404, detail="Event not found")
+    user_id = auth_module.get_current_user_id(request)
+    stored_token = event.get("auth_token", "")
+    owns_via_jwt = user_id and event.get("user_id") == user_id
+    owns_via_token = stored_token and body.get("auth_token") == stored_token
+    if not owns_via_jwt and not owns_via_token:
+        raise HTTPException(403, detail="Not authorised")
+    guests = event.get("guests", [])
+    name_lower = (body.get("guest_name") or "").strip().lower()
+    for g in guests:
+        if g.get("name", "").lower() == name_lower:
+            g["hotel"] = body.get("hotel", "")
+            break
+    event["guests"] = guests
+    save_events(events)
+    return {"success": True}
 
 
 @app.post("/api/debug/email-test")
