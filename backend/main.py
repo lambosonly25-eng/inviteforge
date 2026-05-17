@@ -1589,11 +1589,37 @@ async def send_invite(req: InviteRequest, request: Request):
     if not number:
         return {"success": False, "error": "Invalid number format"}
     personalised = req.message.replace("[Name]", req.name)
+    send_record = {
+        "name":     req.name,
+        "number":   number,
+        "sender":   req.sender,
+        "sent_at":  datetime.now().isoformat(),
+        "event_id": req.event_id or "",
+    }
     try:
         client = twilio_client()
         msg = client.messages.create(body=personalised, from_=req.sender, to=number)
+        send_record["status"] = "sent"
+        send_record["twilio_sid"] = msg.sid
+        if req.event_id:
+            events = load_events()
+            if req.event_id in events:
+                events[req.event_id].setdefault("sends", []).append(send_record)
+                events[req.event_id]["sent"] = True
+                events[req.event_id]["sent_at"] = events[req.event_id].get("sent_at") or send_record["sent_at"]
+                db.save_events(events)
         return {"success": True, "sid": msg.sid, "to": number, "name": req.name}
     except Exception as e:
+        send_record["status"] = "failed"
+        send_record["error"]  = str(e)
+        if req.event_id:
+            try:
+                events = load_events()
+                if req.event_id in events:
+                    events[req.event_id].setdefault("sends", []).append(send_record)
+                    db.save_events(events)
+            except Exception as log_err:
+                print(f"[send-invite] failed to log failure for event {req.event_id}: {log_err}")
         return {"success": False, "error": str(e), "name": req.name}
 
 
@@ -2064,6 +2090,9 @@ async def get_user_events(request: Request):
                 "auth_token": e.get("auth_token", ""),
                 "rsvp_count":        len(e.get("rsvps", [])),
                 "sent":              e.get("sent", False),
+                "sends_count":       len(e.get("sends", [])),
+                "sends_succeeded":   sum(1 for s in e.get("sends", []) if s.get("status") == "sent"),
+                "sends_failed":      sum(1 for s in e.get("sends", []) if s.get("status") == "failed"),
                 "phone_send_method": e.get("phone_send_method", ""),
                 "created":           e.get("created"),
                 "guests":            e.get("guests", []),
@@ -2071,6 +2100,23 @@ async def get_user_events(request: Request):
             for e in events
         ]
     }
+
+
+@app.get("/api/event/{event_id}/sends")
+async def get_event_sends(event_id: str, request: Request):
+    """Return per-recipient send history for an event (dashboard detail view)."""
+    events = load_events()
+    ev = events.get(event_id)
+    if not ev:
+        raise HTTPException(404, detail="Event not found")
+    user_id = auth_module.get_current_user_id(request)
+    stored_token = ev.get("auth_token", "")
+    token = request.query_params.get("auth_token", "")
+    owns_via_jwt = user_id and ev.get("user_id") == user_id
+    owns_via_token = stored_token and token == stored_token
+    if not owns_via_jwt and not owns_via_token:
+        raise HTTPException(403, detail="Not authorised for this event")
+    return {"event_id": event_id, "sends": ev.get("sends", [])}
 
 
 class ResendLinkRequest(BaseModel):
