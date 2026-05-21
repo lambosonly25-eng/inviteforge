@@ -274,3 +274,18 @@ def get_user_by_id(user_id: str) -> Optional[dict]:
     ).fetchone()
     conn.close()
     return dict(row) if row else None
+
+
+def list_all_users() -> list:
+    """Admin-only — return all users with id/email/created_at + their event count."""
+    conn = get_conn()
+    rows = conn.execute(
+        """
+        SELECT u.id, u.email, u.created_at,
+               (SELECT COUNT(*) FROM events e WHERE e.user_id = u.id) AS event_count
+        FROM users u
+        ORDER BY u.created_at DESC
+        """
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
