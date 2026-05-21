@@ -2073,6 +2073,51 @@ async def get_me(request: Request):
     return {"id": user["id"], "email": user["email"], "created_at": user["created_at"]}
 
 
+@app.get("/api/health/full")
+async def health_full():
+    """
+    Comprehensive health check — point UptimeRobot at this.
+    Returns 200 only if SQLite reads work AND Gist saves have been working.
+    Returns 503 with details on any subsystem that's broken.
+
+    Use case: silent data-loss prevention — if the Gist save ever stops
+    working, UptimeRobot pings this and alerts within 5 minutes.
+    """
+    issues = []
+    sqlite_ok = False
+    gist_health = {}
+
+    # Test 1: SQLite read capability
+    try:
+        users = db.list_all_users()
+        sqlite_ok = True
+        user_count = len(users)
+    except Exception as e:
+        issues.append(f"sqlite_read_failed: {e}")
+        user_count = None
+
+    # Test 2: Gist save canary — last save_to_gist outcome
+    try:
+        gist_health = db.get_gist_save_health()
+        if not gist_health.get("configured", False):
+            issues.append("gist_not_configured")
+        elif not gist_health.get("ok", True):
+            issues.append(f"gist_save_failing: {gist_health.get('last_error', 'unknown')}")
+    except Exception as e:
+        issues.append(f"gist_health_unreadable: {e}")
+
+    payload = {
+        "status":     "ok" if not issues else "degraded",
+        "sqlite":     {"ok": sqlite_ok, "user_count": user_count},
+        "gist":       gist_health,
+        "issues":     issues,
+        "checked_at": datetime.now().isoformat(),
+    }
+    if issues:
+        return JSONResponse(payload, status_code=503)
+    return payload
+
+
 @app.get("/api/admin/users")
 async def admin_list_users(request: Request):
     """
