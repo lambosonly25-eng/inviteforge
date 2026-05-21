@@ -2073,6 +2073,30 @@ async def get_me(request: Request):
     return {"id": user["id"], "email": user["email"], "created_at": user["created_at"]}
 
 
+@app.get("/api/admin/users")
+async def admin_list_users(request: Request):
+    """
+    Admin-only list of all signed-up accounts.
+    Auth: pass header `X-Admin-Token` matching env var ADMIN_TOKEN, OR query
+    param ?admin_token= (handy for pasting URL in a phone browser).
+    Returns id + email + created_at + event_count for every user.
+    No password hashes ever returned.
+    """
+    admin_token = (os.getenv("ADMIN_TOKEN", "") or "").strip()
+    if not admin_token:
+        raise HTTPException(503, detail="Admin disabled — set ADMIN_TOKEN env var on Render.")
+    supplied = (request.headers.get("X-Admin-Token", "") or
+                request.query_params.get("admin_token", "")).strip()
+    if supplied != admin_token:
+        raise HTTPException(403, detail="Bad admin token.")
+    users = db.list_all_users()
+    return {
+        "total":    len(users),
+        "users":    users,
+        "fetched":  datetime.now().isoformat(),
+    }
+
+
 @app.get("/api/user/events")
 async def get_user_events(request: Request):
     user_id = auth_module.get_current_user_id(request)
