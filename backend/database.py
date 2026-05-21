@@ -135,12 +135,38 @@ def load_from_gist():
     conn.close()
 
 
+# Module-level health markers — written by save_to_gist + read by /api/health/full
+_last_gist_save_ok: bool = True
+_last_gist_save_ts: float = 0.0
+_last_gist_save_error: str = ""
+
+
+def get_gist_save_health() -> dict:
+    """For /api/health/full — exposes the last Gist save's success/failure state."""
+    import time as _t
+    age = (_t.time() - _last_gist_save_ts) if _last_gist_save_ts else None
+    return {
+        "ok":         _last_gist_save_ok,
+        "last_ts":    _last_gist_save_ts,
+        "age_seconds": age,
+        "last_error": _last_gist_save_error,
+        "configured": bool(_GIST_ID and _GITHUB_TOKEN),
+    }
+
+
 def save_to_gist():
-    """Serialise current SQLite state → Gist (background, best-effort)."""
+    """Serialise current SQLite state → Gist (background, best-effort).
+
+    Updates module-level health markers so /api/health/full can flag silent
+    failures. If save fails, _last_gist_save_ok flips False — UptimeRobot on
+    /api/health/full will see a non-200 and alert.
+    """
     if not _GIST_ID or not _GITHUB_TOKEN:
         return
 
     def _do_save():
+        global _last_gist_save_ok, _last_gist_save_ts, _last_gist_save_error
+        import time as _t
         conn = get_conn()
 
         # Events
@@ -178,7 +204,14 @@ def save_to_gist():
             retries=3,
         )
         if result is None:
+            _last_gist_save_ok    = False
+            _last_gist_save_ts    = _t.time()
+            _last_gist_save_error = "Gist PATCH failed after 3 retries"
             print("[CRITICAL] save_to_gist: Gist PATCH failed after 3 attempts — data NOT persisted, will be lost on restart")
+        else:
+            _last_gist_save_ok    = True
+            _last_gist_save_ts    = _t.time()
+            _last_gist_save_error = ""
 
     # Run in background thread so writes never block the request
     threading.Thread(target=_do_save, daemon=True).start()
